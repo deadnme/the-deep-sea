@@ -18,8 +18,11 @@ depth, sunlight and approximate pressure, and the zone label changes as you pass
 | Challenger Deep | ~10,935 m |
 
 More than 20 creatures sit at the depths where they actually live, each with a label that follows it.
-Labels with a + open the field guide. The rail on the right jumps to each zone. Sound is opt-in and
+Labels with a + open the field guide. The descent slows as each featured creature passes, so it
+holds the middle of the screen. The depth gauge on the right marks each zone and featured creature,
+and jumps to a zone when clicked. Sound is opt-in and
 synthesized locally. Pause motion stops all animation, and reduced-motion preferences are respected.
 
-All creatures are procedural three.js illustrations. Their sizes are illustrative, and each zone gets
+Type is Bricolage Grotesque (SIL Open Font License), self-hosted in `fonts/`. Headlines grow
+narrower and heavier as the pressure rises. All creatures are procedural three.js illustrations. Their sizes are illustrative, and each zone gets
 roughly equal scroll time. Sources are linked in the site's About dialog and in the field guide.

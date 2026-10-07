@@ -1,4 +1,4 @@
-import { stages, creatures, sampleJourney } from './journey.js';
+import { stages, creatures, sampleJourney, stops, depthToS } from './journey.js?v=3';
 
 const $ = (selector) => document.querySelector(selector);
 const chapters = [...document.querySelectorAll('.chapter')];
@@ -7,8 +7,15 @@ let tops = [], maxScroll = 1, motionPaused = reduced.matches, ocean = null, last
 function measure() { tops = chapters.map(el => el.offsetTop); maxScroll = document.documentElement.scrollHeight - innerHeight; }
 measure();
 new ResizeObserver(measure).observe(document.body);
-$('#zone-links').innerHTML = stages.map(s => `<a href="#${s.id}" aria-label="Go to ${s.name}" title="${s.name}">${s.short}</a>`).join('');
-const links = [...$('#zone-links').children];
+// Depth sounder: one line from surface to floor. Zone marks sit where each zone's scroll begins
+// (Challenger Deep sits at the floor), ticks mark featured creatures, the carriage follows the dive.
+const sounder = $('#sounder');
+const at = s => `${(s / stages.length * 100).toFixed(3)}%`;
+const zoneName = { surface: 'Sunlight', twilight: 'Twilight', midnight: 'Midnight', abyss: 'Abyssal', hadal: 'Hadal', fishlimit: 'Fish limit', challenger: 'Challenger Deep' };
+sounder.innerHTML = `<div class="sounder-track" aria-hidden="true"><span class="sounder-fill"></span><span class="sounder-carriage"><span class="sounder-mark"></span></span><span class="sounder-ticks">${stops.map(([, d]) => `<i style="top:${at(depthToS(d))}"></i>`).join('')}</span></div>`
+  + `<ol>${stages.map((s, i) => { const last = i === stages.length - 1, depth = last ? s.end : s.start;
+    return `<li style="top:${at(last ? stages.length : i)}"><a href="#${s.id}" aria-label="${zoneName[s.id]}, ${depth.toLocaleString('en-US')} m"><span class="sz-name">${zoneName[s.id]}</span><span class="sz-depth">${depth.toLocaleString('en-US')} m</span></a></li>`; }).join('')}</ol>`;
+const links = [...sounder.querySelectorAll('a')];
 function paint() {
   const sample = sampleJourney(scrollY, tops, maxScroll);
   $('#depth-number').textContent = sample.depth.toLocaleString('en-US');
@@ -21,6 +28,7 @@ function paint() {
     lastIndex = sample.index;
   }
   $('.rays').style.opacity = Math.max(0, .3 * (1 - (sample.index + sample.progress) / 1.8));
+  sounder.style.setProperty('--p', (sample.s / stages.length).toFixed(4));
   ocean?.update(sample, motionPaused);
   requestAnimationFrame(paint);
 }
@@ -34,7 +42,7 @@ let selected = 'manta';
 function showCreature(id, open = true) {
   selected = id;
   const c = creatures[id];
-  $('#guide-content').innerHTML = `<div class="guide-tabs" role="group" aria-label="Choose a creature">${Object.entries(creatures).map(([key, value]) => `<button data-select="${key}" aria-pressed="${key === id}">${value.name}</button>`).join('')}</div><p class="guide-depth">${c.habitat}</p><h2>${c.name}</h2><p><i>${c.latin}</i></p><h3>${c.note}</h3><p>${c.text}</p><p class="guide-fact">${c.fact}</p><a class="guide-source" href="${c.source}" target="_blank" rel="noopener">Read more about this creature ↗</a>`;
+  $('#guide-content').innerHTML = `<div class="guide-tabs" role="group" aria-label="Choose a creature">${Object.entries(creatures).map(([key, value]) => `<button data-select="${key}" aria-pressed="${key === id}">${value.name}</button>`).join('')}</div><p class="guide-depth">${c.habitat}</p><h2>${c.name}</h2><p><i>${c.latin}</i></p><h3>${c.note}</h3><p>${c.text}</p><p class="guide-fact">${c.fact}</p><a class="guide-source" href="${c.source}" target="_blank" rel="noopener">Read more about this creature</a>`;
   $('#guide-content').querySelectorAll('[data-select]').forEach(button => button.onclick = () => { showCreature(button.dataset.select, false); $('#guide-content').querySelector(`[data-select="${selected}"]`).focus(); });
   if (open) $('#guide').showModal();
 }
@@ -69,7 +77,7 @@ $('#sound').onclick = async () => {
 document.addEventListener('visibilitychange', () => { if (audioContext) document.hidden ? audioContext.suspend() : soundOn && audioContext.resume(); });
 
 try {
-  const { createOcean } = await import('./ocean.js');
+  const { createOcean } = await import('./ocean.js?v=3');
   ocean = createOcean($('#ocean'));
 } catch (error) {
   console.error('Ocean renderer unavailable:', error);

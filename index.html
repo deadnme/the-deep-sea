@@ -4,38 +4,100 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#041b26">
-  <meta name="description" content="An interactive descent through the ocean. Discover its creatures, cross the ocean zones, and reach Challenger Deep in an immersive Three.js expedition.">
-  <title>Below the Surface · An ocean expedition</title>
+  <meta name="description" content="An interactive descent through the ocean, from sunlit water to the floor of Challenger Deep, meeting the creatures that live at each depth.">
+  <title>Below the Surface</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23092638%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22%2390d3c9%22/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
-  <a class="skip" href="#journey">Skip to ocean journey</a>
+  <a class="skip" href="#journey">Skip to the ocean journey</a>
   <div id="ocean" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
   <div class="rays" aria-hidden="true"></div>
   <div id="labels"></div>
   <header class="header">
-    <nav aria-label="Main navigation"><button id="guide-open">Field guide <span>↗</span></button><button id="motion" aria-pressed="false">Pause motion</button></nav>
+    <nav aria-label="Main navigation"><button id="guide-open">Field guide</button><button id="motion" aria-pressed="false">Pause motion</button></nav>
   </header>
-  <aside class="zone-nav" aria-label="Navigate ocean zones"><span class="rail-title">THE DESCENT</span><div id="zone-links"></div></aside>
+  <nav class="sounder" id="sounder" aria-label="Ocean zones"></nav>
   <main id="journey">
     <section id="surface" class="chapter hero" data-stage="0">
-      <div class="copy"><p class="eyebrow">AN EXPEDITION INTO THE UNKNOWN</p><h1>Below the<br><span>surface.</span></h1><p class="intro">Leave the light behind.<br>Discover a world deeper than imagination.</p><a class="primary" href="#twilight">Begin the descent <span>↓</span></a></div>
-      
+      <div class="copy">
+        <h1>Below the surface.</h1>
+        <p class="zone"><strong>Sunlight zone</strong>, 0 to 200 m, epipelagic</p>
+        <p class="intro">Sink from sunlit water to the deepest known point on Earth, and meet what lives at every depth on the way.</p>
+        <a class="primary" href="#twilight">Begin the descent <span aria-hidden="true">↓</span></a>
+      </div>
     </section>
-    <section id="twilight" class="chapter" data-stage="1"><div class="copy"><p class="zone-range">200 - 1,000 M · MESOPELAGIC</p><h2>The last<br>of the light.</h2><p>Sunlight thins to a blue whisper. In the twilight zone, drifting jellyfish turn the darkness into a living constellation.</p><div class="chapter-note"><span>TWILIGHT ZONE</span><p>A world between day and night.</p></div></div></section>
-    <section id="midnight" class="chapter" data-stage="2"><div class="copy"><p class="zone-range">1,000 - 4,000 M · BATHYPELAGIC</p><h2>Darkness.<br>With a spark.</h2><p>Here, sunlight never arrives. A tiny glowing lure becomes an invitation in a world where every meal matters.</p><div class="chapter-note"><span>MIDNIGHT ZONE</span><p>Light is made by life itself.</p></div></div></section>
-    <section id="abyss" class="chapter" data-stage="3"><div class="copy"><p class="zone-range">4,000 - 6,000 M · ABYSSOPELAGIC</p><h2>Life finds<br>a way.</h2><p>Cold, darkness, and immense pressure shape the abyss. A dumbo octopus glides above the seafloor with gentle beats of its fins.</p><div class="chapter-note"><span>ABYSSAL ZONE</span><p>Soft bodies. Extraordinary adaptations.</p></div></div></section>
-    <section id="hadal" class="chapter" data-stage="4"><div class="copy"><p class="zone-range">6,000 - 8,200 M · HADOPELAGIC</p><h2>Into<br>the trenches.</h2><p>The ocean folds into deep trenches. Pale snailfish inhabit the upper hadal waters, thriving far beyond the reach of the sun.</p><div class="chapter-note"><span>HADAL ZONE</span><p>Among the planet's most extreme habitats.</p></div></div></section>
-    <section id="fishlimit" class="chapter" data-stage="5"><div class="copy"><p class="zone-range">8,200 - 10,800 M · HADOPELAGIC</p><h2>Beyond the<br>fish limit.</h2><p>Below about 8,200 m, no fish can survive the pressure. The deepest fish ever filmed, a snailfish, swam at 8,336 m. Deeper still, amphipods take over.</p><div class="chapter-note"><span>STILL THE HADAL ZONE</span><p>Too deep for any fish.</p></div></div></section>
-    <section id="challenger" class="chapter final" data-stage="6"><div class="copy"><p class="zone-range">APPROX. 10,935 M · MARIANA TRENCH</p><h2>Challenger<br>Deep.</h2><p>The deepest known place in the ocean. Even here, tiny amphipods and microorganisms make a home in the sediment.</p><div class="chapter-note"><span>THE END OF OUR DESCENT</span><p>There is still so much left to discover.</p></div><a class="return" href="#surface">Return to the surface <span>↑</span></a><button id="sources-open" class="sources-link">About this expedition &amp; sources ↗</button></div></section>
+    <section id="twilight" class="chapter" data-stage="1">
+      <div class="copy">
+        <h2>The last of the light.</h2>
+        <p class="zone"><strong>Twilight zone</strong>, 200 to 1,000 m, mesopelagic</p>
+        <p>Sunlight fades to a dim blue, too weak for plants to grow. Many animals here make their own light, and each night billions of them swim up to feed.</p>
+      </div>
+    </section>
+    <section id="midnight" class="chapter" data-stage="2">
+      <div class="copy">
+        <h2>Darkness, with a spark.</h2>
+        <p class="zone"><strong>Midnight zone</strong>, 1,000 to 4,000 m, bathypelagic</p>
+        <p>No sunlight reaches this deep. The only light comes from animals, like the glowing lure an anglerfish dangles to draw prey toward its jaws.</p>
+      </div>
+    </section>
+    <section id="abyss" class="chapter" data-stage="3">
+      <div class="copy">
+        <h2>Cold, dark and crushing.</h2>
+        <p class="zone"><strong>Abyssal zone</strong>, 4,000 to 6,000 m, abyssopelagic</p>
+        <p>The water is near freezing and the pressure is hundreds of times that at the surface. A dumbo octopus glides over the seafloor on ear-like fins.</p>
+      </div>
+    </section>
+    <section id="hadal" class="chapter" data-stage="4">
+      <div class="copy">
+        <h2>Into the trenches.</h2>
+        <p class="zone"><strong>Hadal zone</strong>, 6,000 to 11,000 m, hadopelagic</p>
+        <p>Named after Hades, this zone exists only inside deep ocean trenches. Pale snailfish live in its upper reaches, feeding on small crustaceans.</p>
+      </div>
+    </section>
+    <section id="fishlimit" class="chapter" data-stage="5">
+      <div class="copy">
+        <h2>Beyond the fish limit.</h2>
+        <p class="zone"><strong>Hadal zone</strong>, below about 8,200 m</p>
+        <p>No fish can survive much deeper than this. The deepest fish ever filmed, a snailfish, swam at 8,336 m. Below it, amphipods take over.</p>
+      </div>
+    </section>
+    <section id="challenger" class="chapter final" data-stage="6">
+      <div class="copy">
+        <h2>The deepest place we know.</h2>
+        <p class="zone"><strong>Challenger Deep</strong>, about 10,935 m, Mariana Trench</p>
+        <p>The pressure here is more than 1,000 times that at the surface. Amphipods, sea cucumbers and giant single-celled xenophyophores still live on the sediment.</p>
+        <a class="return" href="#surface">Return to the surface <span aria-hidden="true">↑</span></a>
+        <button id="sources-open" class="sources-link">About this site and its sources</button>
+      </div>
+    </section>
   </main>
-  <footer class="instrument-bar"><div class="depth"><span class="instrument-label">DEPTH BELOW SURFACE</span><div><strong id="depth-number">0</strong><span class="unit">m</span><span class="depth-rule"></span><span id="current-zone">Sunlight zone</span></div></div><div class="conditions"><span class="instrument-label">SUNLIGHT</span><strong id="light-value">Abundant</strong></div><div class="conditions pressure"><span class="instrument-label">PRESSURE, APPROX.</span><strong><span id="pressure-value">1</span> <small>atm</small></strong></div><button id="sound" aria-pressed="false"><span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sound-label">Sound off</span></button></footer>
-  <div id="loading" role="status"><span>Preparing your expedition</span><span class="loading-track"></span></div>
-  <p id="render-error" hidden>3D is unavailable on this device. You can still explore all ocean zones and the field guide.</p>
-  <dialog id="guide"><div class="dialog-head"><span>THE FIELD GUIDE</span><button class="dialog-close" aria-label="Close field guide">×</button></div><div id="guide-content"></div></dialog>
-  <dialog id="sources"><div class="dialog-head"><span>ABOUT THE EXPEDITION</span><button class="dialog-close" aria-label="Close sources">×</button></div><h2>A little context.</h2><p>This is an artistic, educational journey. Creature shapes and sizes are stylized; this is not a reconstruction of a single dive. The descent expands shallower zones so every habitat has room to tell its story.</p><p>Pressure is estimated at one atmosphere per 10 metres plus surface pressure. The endpoint uses NOAA's approximate depth; measurements of Challenger Deep vary.</p><p>No sunlight reaches below about 1,000 m. Creatures in these scenes are illuminated for visibility. Mariana snailfish appear in the upper hadal zone, not at Challenger Deep.</p><h3>Explore the science</h3><ul><li><a href="https://www.noaa.gov/jetstream/ocean/layers-of-ocean" target="_blank" rel="noopener">NOAA · Layers of the ocean ↗</a></li><li><a href="https://oceanservice.noaa.gov/facts/oceandepth.html" target="_blank" rel="noopener">NOAA · How deep is the ocean? ↗</a></li><li><a href="https://oceanexplorer.noaa.gov/ocean-fact/light-distributed/" target="_blank" rel="noopener">NOAA · Light in the ocean ↗</a></li><li><a href="https://www.mbari.org/animal/deep-sea-anglerfish/" target="_blank" rel="noopener">MBARI · Deep-sea anglerfish ↗</a></li><li><a href="https://www.nhm.ac.uk/discover/what-is-a-dumbo-octopus.html" target="_blank" rel="noopener">Natural History Museum · Dumbo octopus ↗</a></li></ul><p class="fine">Built with Three.js. All creatures are original procedural 3D illustrations.</p></dialog>
-  <script type="module" src="app.js"></script>
+  <footer class="instrument-bar">
+    <div class="depth"><span class="instrument-label">Depth</span><div><strong id="depth-number">0</strong><span class="unit">m</span><span class="depth-rule"></span><span id="current-zone">Sunlight zone</span></div></div>
+    <div class="conditions"><span class="instrument-label">Sunlight</span><strong id="light-value">Abundant</strong></div>
+    <div class="conditions pressure"><span class="instrument-label">Pressure, approx.</span><strong><span id="pressure-value">1</span> <small>atm</small></strong></div>
+    <button id="sound" aria-pressed="false"><span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sound-label">Sound off</span></button>
+  </footer>
+  <div id="loading" role="status"><span>Preparing the descent</span><span class="loading-track"></span></div>
+  <p id="render-error" hidden>3D is unavailable on this device. You can still read every zone and open the field guide.</p>
+  <dialog id="guide"><div class="dialog-head"><span>Field guide</span><button class="dialog-close" aria-label="Close field guide">×</button></div><div id="guide-content"></div></dialog>
+  <dialog id="sources">
+    <div class="dialog-head"><span>About this site</span><button class="dialog-close" aria-label="Close">×</button></div>
+    <h2>A little context.</h2>
+    <p>This is an artistic, educational journey, not a reconstruction of a real dive. Creature shapes and sizes are stylized. Each zone gets about the same amount of scrolling, and the descent slows near featured creatures, so depth does not change at a constant rate.</p>
+    <p>Pressure is estimated at one atmosphere per 10 metres plus surface pressure. The endpoint uses NOAA's approximate depth; measurements of Challenger Deep vary.</p>
+    <p>No sunlight reaches below about 1,000 m. Creatures in these scenes are lit so you can see them. Mariana snailfish appear in the upper hadal zone, not at Challenger Deep.</p>
+    <h3>Explore the science</h3>
+    <ul>
+      <li><a href="https://www.noaa.gov/jetstream/ocean/layers-of-ocean" target="_blank" rel="noopener">NOAA: Layers of the ocean</a></li>
+      <li><a href="https://oceanservice.noaa.gov/facts/oceandepth.html" target="_blank" rel="noopener">NOAA: How deep is the ocean?</a></li>
+      <li><a href="https://oceanexplorer.noaa.gov/ocean-fact/light-distributed/" target="_blank" rel="noopener">NOAA: Light in the ocean</a></li>
+      <li><a href="https://www.mbari.org/animal/deep-sea-anglerfish/" target="_blank" rel="noopener">MBARI: Deep-sea anglerfish</a></li>
+      <li><a href="https://www.nhm.ac.uk/discover/what-is-a-dumbo-octopus.html" target="_blank" rel="noopener">Natural History Museum: Dumbo octopus</a></li>
+    </ul>
+    <p class="fine">Built with Three.js. All creatures are original procedural 3D illustrations. Type is Bricolage Grotesque.</p>
+  </dialog>
+  <script type="module" src="app.js?v=3"></script>
 </body>
 </html>

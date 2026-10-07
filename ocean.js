@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { stages } from './journey.js';
+import { stages, depthToS, sToDepth, stopDepth as D } from './journey.js?v=3';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);
@@ -157,18 +157,9 @@ function amphipod() {
 // ---------- one continuous descent ----------
 // Each stage occupies SEG world units, so world height follows scroll, not metres.
 const TAU = Math.PI * 2, SEG = 100;
-const KEYS = [...stages.map(s => s.start), stages.at(-1).end];
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const smoothstep = (a, b, v) => { const x = clamp((v - a) / (b - a)); return x * x * (3 - 2 * x); };
-const depthAt = s => {
-  const i = Math.min(Math.floor(clamp(s, 0, stages.length)), stages.length - 1);
-  return KEYS[i] + (KEYS[i + 1] - KEYS[i]) * clamp(s - i);
-};
-const yAt = d => {
-  let i = 0;
-  while (i < KEYS.length - 2 && d > KEYS[i + 1]) i++;
-  return -(i + (d - KEYS[i]) / (KEYS[i + 1] - KEYS[i])) * SEG;
-};
+const yAt = d => -depthToS(d) * SEG;
 const WATER = [[0, '#1d6f88'], [200, '#0e485e'], [1000, '#092638'], [4000, '#040e1f'], [6000, '#030b15'], [8200, '#02080e'], [10935, '#010409']]
   .map(([d, c]) => [d, new THREE.Color(c)]);
 const waterAt = (d, out) => {
@@ -453,30 +444,30 @@ export function createOcean(container) {
   }
 
   // Sunlight zone
-  add(wrap(manta, .55, .6), 10, 3, -17, { y: -1.5, name: 'Oceanic manta ray', sub: 'Mobula birostris', guide: 'manta', labelY: 2.5 });
-  add(school(fishGeos(.5), std('#a9c4d6', { roughness: .35, metalness: .15 }), 140, 5, .35), 55, 6, -20, { name: 'Sardines', sub: 'Schooling fish of the upper 100 m', labelY: 3 });
-  add(B.turtle(), 95, 3, -17, { name: 'Green sea turtle', sub: 'Breathes air, grazes near the surface' });
-  add(school(fishGeos(1.6), std('#4a6e92', { roughness: .35, metalness: .15 }), 14, 6, .45), 140, 2, -20, { name: 'Yellowfin tuna', sub: 'Fast hunter of open water', labelY: 2.5 });
-  add(B.jelly(1.1, '#dfe8ff'), 175, 2, -14, { name: 'Moon jellyfish', sub: 'Aurelia aurita' });
-  add(B.jelly(.8, '#dfe8ff'), 185, 7, -20);
+  add(wrap(manta, .55, .6), D.manta, 3, -17, { name: 'Oceanic manta ray', sub: 'Mobula birostris', guide: 'manta', labelY: 2.5 });
+  add(school(fishGeos(.5), std('#a9c4d6', { roughness: .35, metalness: .15 }), 140, 5, .35), 100, 6, -21, { name: 'Sardines', sub: 'Schooling fish of the upper 100 m', labelY: 3 });
+  add(B.turtle(), D.turtle, 3, -17, { name: 'Green sea turtle', sub: 'Breathes air, grazes near the surface' });
+  add(school(fishGeos(1.6), std('#4a6e92', { roughness: .35, metalness: .15 }), 14, 6, .45), 165, 4, -21, { name: 'Yellowfin tuna', sub: 'Fast hunter of open water', labelY: 2.5 });
+  add(B.jelly(1.1, '#dfe8ff'), 70, 1, -15, { name: 'Moon jellyfish', sub: 'Aurelia aurita' });
+  add(B.jelly(.8, '#dfe8ff'), 78, 6, -21);
   // Twilight zone
-  add(wrap(jelly, .7, .8), 330, 3, -15, { name: 'Deep-sea jellyfish', sub: 'Bioluminescent drifter', guide: 'jelly', labelY: 2 });
-  add(school(fishGeos(.45), std('#26384d', { emissive: '#2b6bff', emissiveIntensity: .7, roughness: .4 }), 90, 4, .3), 450, 6, -17, { name: 'Lanternfish', sub: 'Photophores glow along the belly', labelY: 2.6 });
-  add(B.siphonophore(), 540, 3, -20, { name: 'Siphonophore', sub: 'A colony of many specialised animals' });
-  add(B.squid(9, '#8c2d22'), 650, 2, -22, { name: 'Giant squid', sub: 'Architeuthis dux, eyes up to 27 cm wide', labelY: 2 });
-  add(B.jelly(1, '#9a1d1d', '#4fa8ff'), 790, 6, -15, { name: 'Atolla jellyfish', sub: 'Flashes a blue "burglar alarm"' });
-  add(B.vampire(), 910, 1, -15, { name: 'Vampire squid', sub: 'Vampyroteuthis infernalis', labelY: 1.8 });
+  add(wrap(jelly, .7, .8), D.jelly, 3, -15, { name: 'Deep-sea jellyfish', sub: 'Bioluminescent drifter', guide: 'jelly', labelY: 2 });
+  add(school(fishGeos(.45), std('#26384d', { emissive: '#2b6bff', emissiveIntensity: .7, roughness: .4 }), 90, 4, .3), 420, 5, -18, { name: 'Lanternfish', sub: 'Photophores glow along the belly', labelY: 2.6 });
+  add(B.siphonophore(), 520, 3, -22, { name: 'Siphonophore', sub: 'A colony of many specialised animals' });
+  add(B.squid(9, '#8c2d22'), D.squid, 2, -22, { name: 'Giant squid', sub: 'Architeuthis dux, eyes up to 27 cm wide', labelY: 2 });
+  add(B.jelly(1, '#9a1d1d', '#4fa8ff'), 800, 5, -16, { name: 'Atolla jellyfish', sub: 'Flashes a blue "burglar alarm"' });
+  add(B.vampire(), 920, 2, -15, { name: 'Vampire squid', sub: 'Vampyroteuthis infernalis', labelY: 1.8 });
   // Midnight zone
-  add(B.whale(), 1150, 0, -34, { name: 'Sperm whale', sub: 'Hunts squid on dives past 1,000 m', labelY: 3 });
-  add(wrap(angler, .55, .3), 1600, 3, -15, { name: 'Deep-sea anglerfish', sub: 'Ceratioid anglerfish', guide: 'angler', yaw: -.3, labelY: 2.4 });
-  add(B.gulper(), 2500, 3, -16, { name: 'Gulper eel', sub: 'Jaws open wider than its body', yaw: .3 });
-  add(B.fangtooth(), 3200, 5, -14, { name: 'Fangtooth', sub: 'Largest teeth for its size of any fish', yaw: -2.6, labelY: 1 });
+  add(B.whale(), 1700, 0, -34, { name: 'Sperm whale', sub: 'Hunts squid on dives past 1,000 m', labelY: 3 });
+  add(wrap(angler, .55, .3), D.angler, 3, -15, { name: 'Deep-sea anglerfish', sub: 'Ceratioid anglerfish', guide: 'angler', yaw: -.3, labelY: 2.4 });
+  add(B.gulper(), D.gulper, 3, -16, { name: 'Gulper eel', sub: 'Jaws open wider than its body', yaw: .3 });
+  add(B.fangtooth(), 3300, 4, -14, { name: 'Fangtooth', sub: 'Largest teeth for its size of any fish', yaw: -2.6, labelY: 1 });
   // Abyssal zone
-  add(wrap(dumbo, .5, .35), 4400, 3, -15, { name: 'Dumbo octopus', sub: 'Grimpoteuthis', guide: 'dumbo', labelY: 1.6 });
-  const ledge = rock(7, '#3f382e', .18); ledge.scale.y = .28; ledge.position.set(3, yAt(5000) - 2.6, -20); scene.add(ledge);
-  add(B.seaPig(), 5000, 0, -17, { name: 'Sea pig', sub: 'Scotoplanes, a sea cucumber that walks', yaw: .6, labelY: 1 });
-  add(B.seaPig(), 5000, 2.5, -19.5, { yaw: 2 });
-  add(B.tripod(), 5000, 6, -21, { name: 'Tripod fish', sub: 'Bathypterois, stands on long fin rays', yaw: -.3, labelY: 1.2 });
+  add(wrap(dumbo, .5, .35), D.dumbo, 3, -15, { name: 'Dumbo octopus', sub: 'Grimpoteuthis', guide: 'dumbo', labelY: 1.6 });
+  const ledge = rock(7, '#3f382e', .18); ledge.scale.y = .28; ledge.position.set(3, yAt(D.ledge) - 2.6, -20); scene.add(ledge);
+  add(B.seaPig(), D.ledge, 0, -17, { name: 'Sea pig', sub: 'Scotoplanes, a sea cucumber that walks', yaw: .6, labelY: 1 });
+  add(B.seaPig(), D.ledge, 2.5, -19.5, { yaw: 2 });
+  add(B.tripod(), D.ledge, 6, -21, { name: 'Tripod fish', sub: 'Bathypterois, stands on long fin rays', yaw: -.3, labelY: 1.2 });
   // Hadal zone: trench walls from 6,000 m to the floor
   const wallTop = yAt(6000), wallH = wallTop - yAt(10935) + 20;
   for (const s of [1, -1]) {
@@ -486,16 +477,16 @@ export function createOcean(container) {
     const wall = new THREE.Mesh(geo, std('#221e1a', { roughness: 1 }));
     wall.position.set(s * 21 - 3, wallTop - wallH / 2 + 10, -40); scene.add(wall);
   }
-  add(wrap(snailfish, .45, .4), 6450, 3, -14, { name: 'Mariana snailfish', sub: 'Pseudoliparis swirei', guide: 'snailfish', labelY: 1.2 });
-  add(B.bigAmphipod(1.5, '#efe9dc'), 7000, 5, -13, { name: 'Supergiant amphipod', sub: 'Alicella gigantea, up to 34 cm long', labelY: 1.2 });
-  add(wrap(snailfish, .25, .4), 7300, 7, -19, { yaw: 2.6 });
-  add(wrap(snailfish, .25, .4), 7500, 1, -20, { yaw: .4 });
+  add(wrap(snailfish, .45, .4), D.snailfish, 3, -14, { name: 'Mariana snailfish', sub: 'Pseudoliparis swirei', guide: 'snailfish', labelY: 1.2 });
+  add(B.bigAmphipod(1.5, '#efe9dc'), D.bigAmphipod, 4, -13, { name: 'Supergiant amphipod', sub: 'Alicella gigantea, up to 34 cm long', labelY: 1.2 });
+  add(wrap(snailfish, .25, .4), 7500, 6, -19, { yaw: 2.6 });
+  add(wrap(snailfish, .25, .4), 7700, 1, -20, { yaw: .4 });
   // Below the fish limit
-  add(wrap(snailfish, .4, .4), 8336, 3, -14, { name: 'Snailfish at 8,336 m', sub: 'Deepest fish ever filmed (2022)', labelY: 1.2 });
-  add(B.swarm(160, '#f2ecdf', 3), 9400, 3, -15, { name: 'Hirondellea gigas', sub: 'Amphipods that scavenge the trench', labelY: 2 });
+  add(wrap(snailfish, .4, .4), D.deepest, 3, -14, { name: 'Snailfish at 8,336 m', sub: 'Deepest fish ever filmed (2022)', labelY: 1.2 });
+  add(B.swarm(160, '#f2ecdf', 3), D.swarm, 3, -15, { name: 'Hirondellea gigas', sub: 'Amphipods that scavenge the trench', labelY: 2 });
   add(B.swarm(90, '#f2ecdf', 2.5), 10300, 5, -17);
   // Challenger Deep floor
-  const floorY = yAt(10935) - 3;
+  const floorY = yAt(D.floor) - 3;
   {
     const geo = new THREE.PlaneGeometry(260, 260, 140, 140); geo.rotateX(-Math.PI / 2);
     const p = geo.attributes.position;
@@ -506,11 +497,11 @@ export function createOcean(container) {
   }
   // Same height function as the floor vertices (floor mesh sits at z = -40).
   const floorAt = (x, z) => floorY + noise(x * .08, 0, (z + 40) * .08) * 1.2 + noise(x * .6, 1, (z + 40) * .6) * .12;
-  add(wrap(amphipod, .32, .15), 10935, -1, -10, { name: 'Hadal amphipod', sub: 'Hirondellea gigas', guide: 'amphipod', labelY: 1, y: floorAt(-1, -10) + 1.1 });
-  add(B.xeno(), 10935, 2.5, -8, { name: 'Xenophyophore', sub: 'A single cell up to 10 cm across', labelY: .9, y: floorAt(2.5, -8) + .3 });
-  for (const [x, z] of [[-7, -14], [-3, -17], [3, -18], [5, -23]]) add(B.xeno(), 10935, x, z, { y: floorAt(x, z) + .3 });
-  add(B.cucumber(), 10935, -4, -7.5, { name: 'Sea cucumber', sub: 'Holothurians roam the deepest trenches', yaw: 2.4, labelY: .9, y: floorAt(-4, -7.5) + .3 });
-  add(B.swarm(120, '#f2ecdf', 2.5), 10935, 1, -15, { y: floorAt(1, -15) + 1.4 });
+  add(wrap(amphipod, .32, .15), 10935, 0, -10, { name: 'Hadal amphipod', sub: 'Hirondellea gigas', guide: 'amphipod', labelY: 1.6, y: floorAt(0, -10) + 1.1 });
+  add(B.xeno(), 10935, -3.5, -8, { name: 'Xenophyophore', sub: 'A single cell up to 10 cm across', labelY: .8, y: floorAt(-3.5, -8) + .3 });
+  for (const [x, z] of [[-9, -16], [2, -17], [6, -14], [-2, -21]]) add(B.xeno(), 10935, x, z, { y: floorAt(x, z) + .3 });
+  add(B.cucumber(), 10935, -6.5, -12, { name: 'Sea cucumber', sub: 'Holothurians roam the deepest trenches', yaw: 2.4, labelY: .9, y: floorAt(-6.5, -12) + .3 });
+  add(B.swarm(120, '#f2ecdf', 2.5), 10935, 5, -20, { y: floorAt(5, -20) + 1.4 });
 
   // ---------- marine snow ----------
   const SNOW = 1800, BOX = 44;
@@ -521,13 +512,16 @@ export function createOcean(container) {
   const snow = new THREE.Points(snowGeo, snowMat); snow.frustumCulled = false; scene.add(snow);
 
   // ---------- frame loop (driven by app.js) ----------
-  let pointerX = 0, pointerY = 0, time = 0, last = performance.now(), s = null, xOffset = 0;
+  let pointerX = 0, pointerY = 0, time = 0, last = performance.now(), s = null, xOffset = 0, yLift = 0, labelRight = innerWidth;
   addEventListener('pointermove', e => { pointerX = (e.clientX / innerWidth - .5) * 2; pointerY = (e.clientY / innerHeight - .5) * 2; }, { passive: true });
-  // Wide screens keep the left half for text, so the camera looks left of the creatures.
   const resize = () => {
     camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    // Wide screens keep the left half for text; narrow screens keep the top, so creatures sit lower.
     xOffset = innerWidth > 640 ? -4.5 : 1.5;
+    yLift = innerWidth > 640 ? 0 : 3.6;
+    const gauge = document.querySelector('.sounder');
+    labelRight = (gauge ? gauge.getBoundingClientRect().left : innerWidth) - 24;
   };
   addEventListener('resize', resize); resize();
   renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); document.getElementById('render-error').hidden = false; });
@@ -538,11 +532,11 @@ export function createOcean(container) {
     const now = performance.now(), dt = Math.min((now - last) / 1000, .1); last = now;
     if (document.hidden) return;
     if (!paused) time += dt;
-    const target = sample.index + sample.progress;
+    const target = sample.s;
     s = s === null || paused ? target : s + (target - s) * (1 - Math.exp(-dt * 5));
-    const depth = depthAt(s);
+    const depth = sToDepth(s);
 
-    camera.position.set(xOffset + (paused ? 0 : pointerX * .35), -s * SEG + (paused ? 0 : pointerY * -.25), 0);
+    camera.position.set(xOffset + (paused ? 0 : pointerX * .35), -s * SEG + yLift + (paused ? 0 : pointerY * -.25), 0);
     camera.rotation.set(-smoothstep(stages.length - .4, stages.length, s) * .3, 0, 0);
     camera.updateMatrixWorld();
 
@@ -571,8 +565,8 @@ export function createOcean(container) {
       const dist = v.distanceTo(camera.position);
       v.project(camera);
       const px = (v.x + 1) / 2 * innerWidth, py = (1 - v.y) / 2 * innerHeight;
-      // Label sits right of the creature; flip it to the left when the zone rail is in the way.
-      const w = c.el.offsetWidth, right = innerWidth - (innerWidth > 640 ? 190 : 50);
+      // Label sits right of the creature; flip it to the left when the depth gauge is in the way.
+      const w = c.el.offsetWidth, right = labelRight;
       const flip = px + w > right;
       const fits = (flip ? px - w > 0 : px > 0) && py > 90 && py < innerHeight - 130;
       const op = near && v.z < 1 && fits ? clamp(1 - (dist - 18) / 14) : 0;
