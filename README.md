@@ -23,13 +23,3 @@ synthesized locally. Pause motion stops all animation, and reduced-motion prefer
 
 All creatures are procedural three.js illustrations. Their sizes are illustrative, and each zone gets
 roughly equal scroll time. Sources are linked in the site's About dialog and in the field guide.
-
-## Run locally
-
-No build step is needed, and Three.js 0.180.0 is bundled in `vendor/` with its MIT license. The page
-uses ES modules, so serve it over HTTP instead of opening the file directly:
-
-```sh
-python -m http.server 8000
-# open http://localhost:8000
-```
