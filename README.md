@@ -1,22 +1,35 @@
-# The Deep Sea
+# Below the Surface
 
-A scroll-driven three.js descent from the sunlit surface to the floor of the Challenger Deep.
+A scroll-driven Three.js descent from the sunlit surface to the floor of the Challenger Deep.
 
-Each scroll moves you deeper. The water darkens, a depth gauge counts down to ~10,935 m, and the
-zone label changes as you pass through the ocean's layers:
+**Live:** https://deadnme.github.io/the-deep-sea/
+
+Scroll to sink through one continuous 3D water column. As you go deeper, the water darkens, a
+submersible lamp switches on, and the trench walls close in below 6,000 m. The instrument bar tracks
+depth, sunlight and approximate pressure, and the zone label changes as you pass each layer:
 
 | Zone | Depth |
 | --- | --- |
-| Sunlight (epipelagic) | 0 – 200 m |
-| Twilight (mesopelagic) | 200 – 1,000 m |
-| Midnight (bathypelagic) | 1,000 – 4,000 m |
-| Abyssal (abyssopelagic) | 4,000 – 6,000 m |
-| Hadal (hadopelagic) | 6,000 – 11,000 m |
+| Sunlight (epipelagic) | 0 - 200 m |
+| Twilight (mesopelagic) | 200 - 1,000 m |
+| Midnight (bathypelagic) | 1,000 - 4,000 m |
+| Abyssal (abyssopelagic) | 4,000 - 6,000 m |
+| Hadal (hadopelagic) | 6,000 m to the floor, including the fish limit at about 8,200 m |
 | Challenger Deep | ~10,935 m |
 
-Along the way you meet creatures placed at the depths where they actually live: sardines, sea
-turtles, lanternfish, a siphonophore, a giant squid, a vampire squid, a sperm whale, an anglerfish
-with a glowing lure, a gulper eel, a dumbo octopus, sea pigs, a tripod fish, snailfish,
-supergiant amphipods and the xenophyophores and amphipods of the trench floor.
+More than 20 creatures sit at the depths where they actually live, each with a label that follows it.
+Labels with a + open the field guide. The rail on the right jumps to each zone. Sound is opt-in and
+synthesized locally. Pause motion stops all animation, and reduced-motion preferences are respected.
 
-Every creature is built from three.js primitives, so the project has no models, images or build step.
+All creatures are procedural three.js illustrations. Their sizes are illustrative, and each zone gets
+roughly equal scroll time. Sources are linked in the site's About dialog and in the field guide.
+
+## Run locally
+
+No build step is needed, and Three.js 0.180.0 is bundled in `vendor/` with its MIT license. The page
+uses ES modules, so serve it over HTTP instead of opening the file directly:
+
+```sh
+python -m http.server 8000
+# open http://localhost:8000
+```
