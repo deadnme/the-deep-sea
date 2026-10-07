@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Deep Sea</title>
+<meta name="description" content="Scroll from the sunlit surface to the floor of the Challenger Deep, meeting the creatures that live at each depth.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%2304203a%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22%237fe7ff%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #eaf6ff;
+    --muted: rgba(234, 246, 255, .7);
+    --line: rgba(234, 246, 255, .18);
+    --glass: rgba(2, 14, 26, .42);
+    --accent: #7fe7ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; color: var(--ink); }
+  body { font: 16px/1.6 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .label {
+    position: absolute; left: 0; top: 0; white-space: nowrap;
+    padding-left: 10px; border-left: 1px solid var(--accent);
+    font-size: 12px; line-height: 1.35; text-shadow: 0 1px 6px #000;
+    will-change: transform, opacity;
+  }
+  .label b { display: block; font-weight: 600; font-size: 13px; letter-spacing: .02em; }
+  .label span { color: var(--muted); }
+
+  .hud {
+    position: fixed; left: 32px; bottom: 28px; pointer-events: none;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .6);
+  }
+  .hud .depth {
+    font: 300 clamp(44px, 7vw, 88px)/1 Fraunces, Georgia, serif;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .hud .depth small { font-size: .4em; margin-left: .15em; color: var(--muted); }
+  .hud .zone { font-size: 13px; text-transform: uppercase; letter-spacing: .22em; margin-top: 10px; color: var(--accent); }
+  .hud .meta { font-size: 13px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .gauge { position: fixed; right: 28px; top: 50%; height: 56vh; transform: translateY(-50%); width: 1px; background: var(--line); pointer-events: none; }
+  .gauge i { position: absolute; right: 0; width: 7px; height: 1px; background: var(--line); }
+  .gauge i::after { content: attr(data-m); position: absolute; right: 12px; top: -8px; font: 500 10px/1 Inter, sans-serif; font-style: normal; color: var(--muted); white-space: nowrap; }
+  .gauge .dot { position: absolute; left: -4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); transform: translateY(-50%); }
+
+  main { position: relative; }
+  section { position: relative; height: 160vh; }
+  section:last-child { height: 100vh; }
+  .hero {
+    position: absolute; top: 0; left: 0; right: 0; height: 100vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 16px;
+  }
+  .hero h1 { font: 300 clamp(56px, 11vw, 150px)/.95 Fraunces, Georgia, serif; letter-spacing: -.03em; text-shadow: 0 6px 40px rgba(0, 40, 80, .45); }
+  .hero p { margin-top: 18px; max-width: 34rem; color: rgba(255, 255, 255, .9); font-size: 17px; text-shadow: 0 2px 10px rgba(0, 30, 60, .5); }
+  .hero .cue { margin-top: 40px; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(8px); opacity: .6; } }
+
+  .card {
+    position: absolute; top: 130vh; right: max(72px, 7vw); transform: translateY(-50%);
+    width: min(27rem, calc(100% - 32px));
+    padding: 26px 28px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    opacity: 0; transition: opacity .9s ease, transform .9s ease; transform: translateY(calc(-50% + 24px));
+  }
+  section:last-child .card { top: 50vh; }
+  .card.in { opacity: 1; transform: translateY(-50%); }
+  .card .range { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+  .card h2 { font: 400 clamp(30px, 4vw, 42px)/1.1 Fraunces, Georgia, serif; margin: 8px 0 4px; }
+  .card h3 { font: 500 14px/1.4 Inter, sans-serif; color: var(--muted); margin-bottom: 14px; }
+  .card p { color: rgba(234, 246, 255, .88); font-size: 15px; }
+  .card p + p { margin-top: 10px; }
+
+  @media (max-width: 700px) {
+    .hud { left: 16px; bottom: 16px; }
+    .gauge { right: 14px; }
+    .gauge i::after { display: none; }
+    .card { right: 16px; left: 16px; width: auto; top: 118vh; padding: 20px; }
+    .label { font-size: 11px; }
+    .label span { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero .cue { animation: none; }
+    .card { transition: none; }
+  }
+</style>
+<script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  } }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div id="labels" aria-hidden="true"></div>
+
+<div class="hud" aria-live="off">
+  <div class="depth"><span id="depth">0</span><small>m</small></div>
+  <div class="zone" id="zone">Sunlight Zone</div>
+  <div class="meta" id="meta">1 atm</div>
+</div>
+<div class="gauge" id="gauge" aria-hidden="true"><div class="dot" id="dot"></div></div>
+
+<main>
+  <section>
+    <div class="hero">
+      <h1>The Deep Sea</h1>
+      <p>Nearly 11 kilometres of water separate the surface from the deepest point on Earth. Scroll to sink through it, zone by zone, and meet what lives down there.</p>
+      <div class="cue">Scroll to descend</div>
+    </div>
+    <article class="card">
+      <div class="range">0 – 200 m</div>
+      <h2>Sunlight Zone</h2>
+      <h3>Epipelagic</h3>
+      <p>Enough sunlight reaches this thin top layer for photosynthesis, so almost all of the ocean's plant life grows here. Food is plentiful, and so are the animals that eat it.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">200 – 1,000 m</div>
+      <h2>Twilight Zone</h2>
+      <h3>Mesopelagic</h3>
+      <p>Light fades to a dim blue, too weak for photosynthesis. Many animals here make their own light to hunt, hide or find mates.</p>
+      <p>Each night, billions of them swim up toward the surface to feed and sink back at dawn: the largest migration on Earth.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">1,000 – 4,000 m</div>
+      <h2>Midnight Zone</h2>
+      <h3>Bathypelagic</h3>
+      <p>No sunlight reaches this far. The only light is bioluminescence. The water sits near 4&nbsp;°C, and the pressure is more than 100 times that at the surface.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">4,000 – 6,000 m</div>
+      <h2>Abyssal Zone</h2>
+      <h3>Abyssopelagic</h3>
+      <p>The abyssal plains cover most of the ocean floor. The water is close to freezing, and most food arrives as "marine snow": flakes of dead matter drifting down from above.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">6,000 – 11,000 m</div>
+      <h2>Hadal Zone</h2>
+      <h3>Hadopelagic</h3>
+      <p>Named after Hades, the Greek underworld. This zone exists only inside deep ocean trenches, most of them around the rim of the Pacific.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">Below ~8,200 m</div>
+      <h2>Beyond the Fish Limit</h2>
+      <h3>Too deep for any fish</h3>
+      <p>Fish cannot survive much below about 8,200 m. Their bodies cannot hold enough of the molecule that protects their proteins from the pressure.</p>
+      <p>The deepest fish ever filmed, a snailfish, was swimming at 8,336 m in 2022. Below that, amphipods and sea cucumbers take over.</p>
+    </article>
+  </section>
+  <section>
+    <article class="card">
+      <div class="range">~10,935 m · Mariana Trench</div>
+      <h2>Challenger Deep</h2>
+      <h3>The deepest known point on Earth</h3>
+      <p>The pressure here is more than 1,000 times that at the surface. If Mount Everest stood on this floor, its peak would still be about 2 km underwater.</p>
+      <p>Jacques Piccard and Don Walsh first reached the bottom in 1960, in the bathyscaphe <em>Trieste</em>. Published depths range from about 10,920 to 10,994 m.</p>
+    </article>
+  </section>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const TAU = Math.PI * 2;
+// Each scroll stop is one of these depths, spaced evenly in scroll (and in world units).
+const KEYS = [0, 200, 1000, 4000, 6000, 8000, 10935];
+const SEG = 100;                                   // world units between stops
+const SPAN = SEG * (KEYS.length - 1);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const smooth = (a, b, v) => { const x = clamp((v - a) / (b - a)); return x * x * (3 - 2 * x); };
+const depthAt = t => {
+  const f = clamp(t) * (KEYS.length - 1), i = Math.min(Math.floor(f), KEYS.length - 2);
+  return KEYS[i] + (KEYS[i + 1] - KEYS[i]) * (f - i);
+};
+const yAt = d => {
+  let i = 0;
+  while (i < KEYS.length - 2 && d > KEYS[i + 1]) i++;
+  return -(i + (d - KEYS[i]) / (KEYS[i + 1] - KEYS[i])) * SEG;
+};
+const zoneAt = d => d < 200 ? 'Sunlight Zone' : d < 1000 ? 'Twilight Zone' : d < 4000 ? 'Midnight Zone'
+  : d < 6000 ? 'Abyssal Zone' : d < 10800 ? 'Hadal Zone' : 'Challenger Deep';
+
+// Water colour by depth; the scene background and fog both use it.
+const WATER = [[0, '#3d9cd0'], [200, '#0b4a78'], [1000, '#04203a'], [4000, '#020a14'], [6000, '#01040a'], [10935, '#000000']]
+  .map(([d, c]) => [d, new THREE.Color(c)]);
+const waterAt = (d, out) => {
+  let i = 0;
+  while (i < WATER.length - 2 && d > WATER[i + 1][0]) i++;
+  const [d0, c0] = WATER[i], [d1, c1] = WATER[i + 1];
+  return out.lerpColors(c0, c1, clamp((d - d0) / (d1 - d0)));
+};
+
+// ---------- renderer, scene, lights ----------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color();
+scene.fog = new THREE.Fog(0x000000, 4, 90);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 400);
+camera.rotation.order = 'YXZ';
+scene.add(camera);
+
+const sun = new THREE.DirectionalLight(0xfff4dd, 2.2);
+sun.position.set(4, 10, 6);
+const sky = new THREE.HemisphereLight(0xa8dcff, 0x3a6888, 1.2);
+const lamp = new THREE.PointLight(0xc4e8ff, 0, 48, 0);   // submersible lamp, fades in with depth
+lamp.position.set(0, 1, 0);
+camera.add(lamp);
+scene.add(sun, sky);
+
+// ---------- helpers ----------
+const glowTex = (() => {
+  const c = Object.assign(document.createElement('canvas'), { width: 64, height: 64 }), g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.2, 'rgba(255,255,255,.55)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const glow = (color, size, opacity = 1) => {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, opacity, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+  s.scale.setScalar(size); return s;
+};
+const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: .65, ...o });
+const lum = color => new THREE.MeshBasicMaterial({ color, fog: false });
+const ball = (r, mat, sx = 1, sy = 1, sz = 1, seg = 20) => {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.ceil(seg * .75)), mat);
+  m.scale.set(sx, sy, sz); return m;
+};
+const cone = (r, h, mat, seg = 12, open = false) => new THREE.Mesh(new THREE.ConeGeometry(r, h, seg, 1, open), mat);
+const tube = (pts, r, mat) => new THREE.Mesh(
+  new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 48, r, 6), mat);
+const noise = (x, y, z) => Math.sin(x * 1.7 + z * .9) * Math.cos(z * 1.3 - y) + Math.sin(x * 3.1 + y * 2.3 + z * .7) * .5;
+const rock = (r, color, amt = .25) => {
+  const geo = new THREE.IcosahedronGeometry(r, 3), p = geo.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    v.multiplyScalar(1 + noise(v.x * 2 / r, v.y * 2 / r, v.z * 2 / r) * amt);
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, std(color, { roughness: 1, flatShading: true }));
+};
+
+// Fish body facing +x, tail toward -x.
+const fishGeo = len => {
+  const body = new THREE.SphereGeometry(.5, 16, 12); body.scale(len, len * .32, len * .16);
+  const tail = new THREE.ConeGeometry(len * .2, len * .35, 4); tail.rotateZ(-Math.PI / 2); tail.scale(1, 1, .25); tail.translate(-len * .62, 0, 0);
+  return mergeGeometries([body, tail]);
+};
+const fish = (len, mat) => {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(fishGeo(len), mat));
+  for (const s of [1, -1]) { const e = ball(len * .055, std('#0b0b0b', { roughness: .2 }), 1, 1, 1, 10); e.position.set(len * .32, len * .04, s * len * .065); g.add(e); }
+  return g;
+};
+// Many copies of one geometry circling a point: fish schools, amphipod swarms.
+const school = (geo, mat, n, radius, speed = .3) => {
+  const mesh = new THREE.InstancedMesh(geo, mat, n);
+  mesh.frustumCulled = false;
+  const fs = Array.from({ length: n }, () => ({
+    a: Math.random() * TAU, r: radius * (.45 + Math.random() * .55), h: (Math.random() - .5) * radius * .6,
+    s: speed * (.85 + Math.random() * .3) * (Math.random() < .5 && speed < .3 ? -1 : 1), w: Math.random() * TAU
+  }));
+  const d = new THREE.Object3D();
+  const update = t => {
+    fs.forEach((f, i) => {
+      const a = f.a + t * f.s;
+      d.position.set(Math.cos(a) * f.r, f.h + Math.sin(t * 1.3 + f.w) * .35, Math.sin(a) * f.r);
+      d.rotation.set(0, -a - Math.sign(f.s) * Math.PI / 2, Math.sin(t * 7 + f.w) * .06);
+      d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+  update(0);
+  return [mesh, update];
+};
+// Gentle drift around the creature's home position.
+const drift = (amp = .4, sp = .6) => (t, o, h, k) => { o.position.y = h.y + Math.sin(t * sp + k) * amp; o.rotation.y = Math.sin(t * .2 + k) * .25 + o.userData.yaw; };
+
+// ---------- creatures ----------
+const B = {
+  turtle() {
+    const g = new THREE.Group(), skin = std('#86956a');
+    g.add(ball(1, std('#5f4f2c', { roughness: .8 }), 1.3, .42, 1));
+    const head = ball(.33, skin, 1.25, .9, .9); head.position.set(1.5, .05, 0); g.add(head);
+    const flips = [];
+    for (const [x, s, l] of [[.55, 1, 1.5], [.55, -1, 1.5], [-.9, 1, .7], [-.9, -1, .7]]) {
+      const p = new THREE.Group(), f = ball(.5, skin, l * .45, .07, l); f.position.z = s * l * .5; f.rotation.y = s * -.4;
+      p.add(f); p.position.set(x, 0, s * .75); p.userData.s = s; g.add(p); flips.push(p);
+    }
+    return [g, (t, o, h, k) => {
+      const a = t * .12 + k;
+      o.position.set(h.x + Math.cos(a) * 3, h.y + Math.sin(t * .5) * .5, h.z + Math.sin(a) * 2);
+      o.rotation.y = -a - Math.PI / 2;
+      flips.forEach((p, i) => p.rotation.x = p.userData.s * Math.sin(t * 1.6 + (i > 1 ? 1.2 : 0)) * .45);
+    }];
+  },
+  jelly(r, color, ringColor) {
+    const g = new THREE.Group();
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 14, 0, TAU, 0, Math.PI / 2),
+      std(color, { transparent: true, opacity: .55, emissive: color, emissiveIntensity: .35, side: THREE.DoubleSide, depthWrite: false }));
+    g.add(bell);
+    const lm = new THREE.LineBasicMaterial({ color, transparent: true, opacity: .45 });
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * TAU, pts = [];
+      for (let k = 0; k < 14; k++) pts.push(new THREE.Vector3(Math.cos(a) * r * .85 + Math.sin(k * .7 + i) * k * .02 * r, -k * r * .3, Math.sin(a) * r * .85));
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lm));
+    }
+    const ring = [];
+    if (ringColor) for (let i = 0; i < 16; i++) {
+      const a = i / 16 * TAU, s = glow(ringColor, r * .7); s.position.set(Math.cos(a) * r * .95, .05, Math.sin(a) * r * .95); g.add(s); ring.push(s);
+    }
+    return [g, (t, o, h, k) => {
+      const p = Math.sin(t * 1.8 + k);
+      bell.scale.set(1 + p * .08, 1 - p * .14, 1 + p * .08);
+      o.position.y = h.y + Math.sin(t * .4 + k) * .8 + p * .08;
+      o.rotation.z = Math.sin(t * .3 + k) * .12;
+      ring.forEach((s, i) => s.material.opacity = .25 + .75 * Math.max(0, Math.sin(t * 4 - i / 16 * TAU)));  // Atolla's pinwheel
+    }];
+  },
+  siphonophore() {
+    const g = new THREE.Group(), beads = [];
+    for (let i = 0; i < 46; i++) {
+      const b = ball(i ? .1 : .22, lum(i % 4 ? '#7fe7ff' : '#ffcf7a'), 1, 1, 1, 8);
+      if (i % 5 === 0) b.add(glow(i ? '#7fe7ff' : '#ffcf7a', i ? 1 : 2, .7));
+      g.add(b); beads.push(b);
+    }
+    return [g, (t, o, h, k) => {
+      beads.forEach((b, i) => b.position.set(5 - i * .28, Math.sin(t * .7 + i * .22 + k) * .7 - i * .03, Math.cos(t * .5 + i * .18) * .5));
+      o.position.y = h.y + Math.sin(t * .3) * .4;
+    }];
+  },
+  squid(len, color, eye = '#e6e0c8') {
+    const g = new THREE.Group(), m = std(color, { roughness: .45 });
+    const mantle = cone(len * .11, len * .45, m, 20); mantle.rotation.z = Math.PI / 2; mantle.position.x = -len * .225; g.add(mantle);
+    for (const s of [1, -1]) { const f = ball(len * .1, m, .9, .12, 1); f.position.set(-len * .4, 0, s * len * .06); g.add(f); }
+    const head = ball(len * .09, m, 1.2, 1, 1); head.position.x = len * .03; g.add(head);
+    for (const s of [1, -1]) {
+      const e = ball(len * .035, std(eye, { roughness: .2 })); e.position.set(len * .05, len * .02, s * len * .07); g.add(e);
+      const p = ball(len * .02, std('#050505', { roughness: .1 })); p.position.set(len * .06, len * .02, s * len * .095); g.add(p);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * TAU, long = i === 2 || i === 7, L = len * (long ? .75 : .32), c = Math.cos(a) * len * .05, s = Math.sin(a) * len * .05;
+      g.add(tube([[len * .1, c, s], [len * .1 + L * .4, c * 1.8, s * 1.8 + .1], [len * .1 + L * .75, c * 1.4 - .2, s * 2.2], [len * .1 + L, c * 2.2, s * 1.4]], long ? len * .008 : len * .013, m));
+    }
+    return [g, (t, o, h, k) => {
+      o.position.x = h.x + Math.sin(t * .15 + k) * 2;
+      o.position.y = h.y + Math.sin(t * .35 + k) * .5;
+      o.rotation.z = Math.sin(t * .4 + k) * .08;
+    }];
+  },
+  vampire() {
+    const g = new THREE.Group(), m = std('#4b0f1a', { roughness: .55 });
+    g.add(ball(.6, m, 1, 1.35, 1));
+    for (const s of [1, -1]) { const f = ball(.3, m, .2, .5, 1); f.position.set(0, .6, s * .55); g.add(f); }
+    const web = cone(1.4, 1.3, std('#3a0a14', { side: THREE.DoubleSide, roughness: .7 }), 16, true);
+    web.position.y = -.85; g.add(web);
+    for (const s of [1, -1]) { const e = ball(.12, lum('#5fd8ff'), 1, 1, 1, 10); e.position.set(.48, .1, s * .3); g.add(e); }
+    const tips = [];
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, s = glow('#59c6ff', .9); s.position.set(Math.cos(a) * 1.4, -1.5, Math.sin(a) * 1.4); g.add(s); tips.push(s); }
+    return [g, (t, o, h, k) => {
+      o.rotation.y = t * .15; o.position.y = h.y + Math.sin(t * .5 + k) * .6;
+      web.scale.setScalar(1 + Math.sin(t * 1.2) * .1);
+      tips.forEach((s, i) => s.material.opacity = .5 + .5 * Math.sin(t * 2.5 + i));
+    }];
+  },
+  whale() {
+    const g = new THREE.Group(), m = std('#4d5661', { roughness: .85 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(1.5, 7, 8, 20), m); body.rotation.z = Math.PI / 2; g.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3, 2.9, 2, 2, 2), m); head.position.set(3.4, .2, 0); g.add(head);
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(3.6, .25, .6), std('#d9d4c8')); jaw.position.set(3.2, -1.35, 0); g.add(jaw);
+    const tail = cone(1.3, 4.5, m, 16); tail.rotation.z = Math.PI / 2; tail.position.x = -6.4; g.add(tail);
+    const fluke = ball(1, m, .8, .08, 2.4); fluke.position.x = -8.6; g.add(fluke);
+    for (const s of [1, -1]) { const e = ball(.12, std('#111')); e.position.set(1.4, -.6, s * 1.42); g.add(e); }
+    return [g, (t, o, h, k) => {
+      const a = (t * .9 + k) % 70;
+      o.position.set(h.x - 35 + a, h.y + Math.sin(t * .2) * .6, h.z);
+      o.rotation.z = Math.sin(t * .6) * .03; fluke.rotation.z = Math.sin(t * .9) * .25;
+    }];
+  },
+  angler() {
+    const g = new THREE.Group(), m = std('#3b2b23', { roughness: .9 });
+    g.add(ball(1, m, 1.15, .95, .85));
+    const mouth = ball(.62, std('#0a0505'), .45, .7, .85); mouth.position.x = .92; g.add(mouth);
+    const tooth = std('#e8e6dc', { roughness: .3, transparent: true, opacity: .9 });
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 11 - .5) * 2.2, up = i % 2 ? 1 : -1, c = cone(.04, .32, tooth, 5);
+      c.position.set(1.0, up * .38, Math.sin(a) * .5); c.rotation.z = up > 0 ? Math.PI : 0; g.add(c);
+    }
+    for (const s of [1, -1]) { const e = ball(.08, std('#9aa', { roughness: .1 }), 1, 1, 1, 8); e.position.set(.7, .45, s * .5); g.add(e); }
+    const fin = ball(.5, m, .9, .9, .06); fin.position.set(-1.2, 0, 0); g.add(fin);
+    g.add(tube([[.3, .9, 0], [.9, 1.75, 0], [1.6, 1.85, 0], [2.0, 1.4, 0]], .03, m));
+    const lure = ball(.13, lum('#c8fbff'), 1, 1, 1, 10); lure.position.set(2.0, 1.32, 0); g.add(lure);
+    const halo = glow('#7ff0ff', 3); lure.add(halo);
+    const light = new THREE.PointLight('#7ff0ff', 6, 7, 1.6); lure.add(light);
+    return [g, (t, o, h, k) => {
+      const f = .75 + .25 * Math.sin(t * 2.7) * Math.sin(t * 1.3);
+      halo.material.opacity = f; light.intensity = 6 * f;
+      o.position.y = h.y + Math.sin(t * .4) * .3; o.rotation.y = o.userData.yaw + Math.sin(t * .25) * .2;
+    }];
+  },
+  gulper() {
+    const g = new THREE.Group(), m = std('#151012', { roughness: .6 });
+    const pts = []; for (let i = 0; i <= 20; i++) pts.push([-i * .45, Math.sin(i * .5) * .5, Math.cos(i * .35) * .3]);
+    g.add(tube(pts, .12, m));
+    const jaw = cone(1, 1.6, std('#1f1418', { side: THREE.DoubleSide, roughness: .5 }), 18, true); jaw.rotation.z = Math.PI / 2; jaw.position.x = .8; g.add(jaw);
+    const tip = glow('#ff6fb5', 1.6); tip.position.set(...pts.at(-1)); g.add(tip);
+    return [g, (t, o, h, k) => {
+      o.rotation.y = o.userData.yaw + Math.sin(t * .3) * .4; o.rotation.z = Math.sin(t * .5) * .1;
+      o.position.y = h.y + Math.sin(t * .35 + k) * .5; tip.material.opacity = .6 + .4 * Math.sin(t * 3);
+    }];
+  },
+  fangtooth() {
+    const g = fish(1.8, std('#2c2421', { roughness: .8 }));
+    const tooth = std('#eeeae0', { roughness: .3 });
+    for (const [z, up] of [[.1, 1], [-.1, 1], [.06, -1], [-.06, -1]]) {
+      const c = cone(.04, .38, tooth, 5); c.position.set(.88, up * .12, z); c.rotation.z = up > 0 ? 0 : Math.PI; g.add(c);
+    }
+    return [g, drift(.4, .5)];
+  },
+  dumbo() {
+    const g = new THREE.Group(), m = std('#e59f78', { roughness: .55 });
+    g.add(ball(.8, m, 1, 1.15, 1));
+    const ears = [1, -1].map(s => { const p = new THREE.Group(), e = ball(.45, m, .9, .12, .6); e.position.z = s * .45; p.add(e); p.position.set(0, .6, s * .7); p.userData.s = s; g.add(p); return p; });
+    const web = cone(1.25, 1, std('#d88763', { side: THREE.DoubleSide }), 16, true); web.position.y = -1; g.add(web);
+    for (const s of [1, -1]) { const e = ball(.13, std('#120c0a', { roughness: .1 }), 1, 1, 1, 10); e.position.set(.62, .05, s * .38); g.add(e); }
+    return [g, (t, o, h, k) => {
+      ears.forEach(p => p.rotation.x = p.userData.s * Math.sin(t * 3 + k) * .5);
+      web.scale.set(1 + Math.sin(t * 1.5) * .12, 1, 1 + Math.sin(t * 1.5) * .12);
+      o.position.y = h.y + Math.sin(t * 1.5 + k) * .35; o.rotation.y = t * .1 + k;
+    }];
+  },
+  seaPig() {
+    const g = new THREE.Group(), m = std('#e8b4c0', { transparent: true, opacity: .85, roughness: .35 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1.2, 6, 14), m); body.rotation.z = Math.PI / 2; g.add(body);
+    for (let i = 0; i < 6; i++) for (const s of [1, -1]) { const l = cone(.07, .3, m, 6); l.position.set(-.55 + i * .22, -.35, s * .22); l.rotation.z = Math.PI; g.add(l); }
+    for (const s of [1, -1]) for (const x of [.55, .35]) { const a = cone(.05, .45, m, 6); a.position.set(x, .45, s * .12); a.rotation.z = -.4; g.add(a); }
+    return [g, (t, o, h, k) => { o.position.x = h.x + Math.sin(t * .08 + k) * .8; o.rotation.z = Math.sin(t * 2 + k) * .03; }];
+  },
+  tripod() {
+    const g = fish(1.6, std('#5b4b3d', { roughness: .8 }));
+    const ray = std('#3a3029');
+    for (const [x, z] of [[.35, .2], [.35, -.2], [-1.0, 0]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, 1.4, 4), ray); c.position.set(x, -.75, z); g.add(c); }
+    return [g, (t, o, h, k) => { o.rotation.z = Math.sin(t * .5 + k) * .02; }];
+  },
+  amphipod(len, color) {
+    const g = new THREE.Group(), m = std(color, { roughness: .4 });
+    for (let i = 0; i < 9; i++) {
+      const a = i / 8 * 2.2 - .4, seg = ball(len * (.12 - i * .007), m, 1, .9, .8, 12);
+      seg.position.set(Math.cos(a) * len * .45, Math.sin(a) * len * .45, 0); g.add(seg);
+    }
+    for (let i = 0; i < 7; i++) {
+      const a = i / 8 * 2.2 - .2, l = new THREE.Mesh(new THREE.CylinderGeometry(len * .01, len * .01, len * .3, 4), m);
+      l.position.set(Math.cos(a) * len * .3, Math.sin(a) * len * .3 - len * .1, 0); l.rotation.z = a; g.add(l);
+    }
+    return [g, drift(.3, .7)];
+  },
+  snailfish() {
+    const g = new THREE.Group(), m = std('#f2c9c9', { transparent: true, opacity: .78, roughness: .3, emissive: '#3a1a1a' });
+    g.add(ball(.5, m, 1.1, .9, .8));
+    const tail = cone(.42, 2.2, m, 16); tail.rotation.z = Math.PI / 2; tail.position.x = -1.3; g.add(tail);
+    for (const s of [1, -1]) { const e = ball(.06, std('#222')); e.position.set(.4, .1, s * .3); g.add(e); }
+    return [g, (t, o, h, k) => {
+      o.rotation.y = o.userData.yaw + Math.sin(t * 1.2 + k) * .18;
+      o.position.y = h.y + Math.sin(t * .4 + k) * .4;
+      o.position.x = h.x + Math.sin(t * .1 + k) * 1.5;
+    }];
+  },
+  cucumber() {
+    const g = new THREE.Group(), m = std('#f2a5b8', { transparent: true, opacity: .62, roughness: .25, emissive: '#2a0b12' });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(.3, 1.1, 6, 14), m); body.rotation.z = Math.PI / 2; g.add(body);
+    for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, c = cone(.04, .3, m, 5); c.position.set(.95, Math.cos(a) * .22, Math.sin(a) * .22); c.rotation.z = -Math.PI / 2; g.add(c); }
+    return [g, (t, o, h, k) => { o.scale.x = 1 + Math.sin(t * .8 + k) * .06; }];
+  },
+  xeno() { return [rock(.5, '#cdb894', .35), null]; },
+  swarm(n, color, radius) {
+    const geo = new THREE.CapsuleGeometry(.04, .16, 3, 6); geo.rotateZ(Math.PI / 2);
+    return school(geo, std(color, { roughness: .4 }), n, radius, .5);
+  },
+};
+
+// ---------- placement ----------
+const life = [];
+const labelsEl = document.getElementById('labels');
+function add(name, sub, depth, x, z, built, { yaw = 0, labelY = 1.6, y = yAt(depth) } = {}) {
+  const [obj, update] = built;
+  obj.position.set(x, y, z);
+  obj.rotation.y = obj.userData.yaw = yaw;
+  scene.add(obj);
+  let el = null;
+  if (name) {
+    el = document.createElement('div'); el.className = 'label';
+    el.innerHTML = `<b>${name}</b><span>${sub}</span>`;
+    labelsEl.append(el);
+  }
+  life.push({ obj, update, home: obj.position.clone(), k: Math.random() * TAU, el, labelY });
+}
+
+// Sunlight zone
+const sardineMat = std('#a9c4d6', { roughness: .35, metalness: .15 });
+add('Sardines', 'Schooling fish of the upper 100 m', 35, -6, -16, school(fishGeo(.5), sardineMat, 140, 5, .35), { labelY: 3 });
+add('Green sea turtle', 'Air-breather that grazes near the surface', 85, 7, -18, B.turtle());
+add('Yellowfin tuna', 'Fast hunters of the open ocean', 110, -3, -18, school(fishGeo(1.6), std('#4a6e92', { roughness: .35, metalness: .15 }), 14, 6, .45), { labelY: 2.5 });
+add('Moon jellyfish', 'Aurelia aurita', 160, -3, -14, B.jelly(1.1, '#dfe8ff'));
+add('', '', 170, -8, -20, B.jelly(.8, '#dfe8ff'));
+add('', '', 185, 1, -22, B.jelly(.9, '#dfe8ff'));
+// Twilight zone
+add('Lanternfish', 'Photophores glow along the belly', 380, 6, -15,
+  school(fishGeo(.45), std('#26384d', { emissive: '#2b6bff', emissiveIntensity: .7, roughness: .4 }), 90, 4, .3), { labelY: 2.6 });
+add('Siphonophore', 'A colony of many specialised animals', 520, -3, -20, B.siphonophore());
+add('Giant squid', 'Architeuthis dux · eyes up to 27 cm wide', 640, -2, -22, B.squid(9, '#8c2d22'), { labelY: 2 });
+add('Atolla jellyfish', 'Flashes a blue "burglar alarm" when attacked', 790, 5, -15, B.jelly(1, '#9a1d1d', '#4fa8ff'));
+add('Vampire squid', 'Vampyroteuthis infernalis', 900, -5, -15, B.vampire(), { labelY: 1.8 });
+// Midnight zone
+add('Sperm whale', 'Hunts squid on dives past 1,000 m', 1250, 0, -30, B.whale(), { labelY: 3 });
+add('Humpback anglerfish', 'Its lure glows with bacteria', 1700, 4, -13, B.angler(), { yaw: -.5, labelY: 2.4 });
+add('Gulper eel', 'Jaws open wider than its body', 2500, 1, -16, B.gulper(), { yaw: .3 });
+add('Fangtooth', 'Largest teeth for its size of any fish', 3200, 4, -14, B.fangtooth(), { yaw: -2.6, labelY: 1 });
+// Abyssal zone
+add('Dumbo octopus', 'Grimpoteuthis · swims with ear-like fins', 4300, -4, -13, B.dumbo(), { labelY: 1.6 });
+const ledge = rock(7, '#3f382e', .18); ledge.scale.y = .28; ledge.position.set(-1, yAt(5000) - 2.6, -20); scene.add(ledge);
+add('Sea pig', 'Scotoplanes · a sea cucumber that walks', 5000, -3.5, -17, B.seaPig(), { yaw: .6, labelY: 1 });
+add('', '', 5000, -1, -19.5, B.seaPig(), { yaw: 2 });
+add('Tripod fish', 'Bathypterois · stands on long fin rays', 5000, 2, -21, B.tripod(), { yaw: -.3, labelY: 1.2 });
+// Hadal zone
+const wallH = yAt(6000) - yAt(10935) + 20;
+for (const s of [1, -1]) {
+  const geo = new THREE.BoxGeometry(10, wallH, 120, 4, 90, 40), p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getX(i) * s < 0) p.setX(i, p.getX(i) + noise(p.getY(i) * .15, p.getZ(i) * .15, s) * 2.5 + noise(p.getY(i) * .5, p.getZ(i) * .5, 2) * .6);
+  geo.computeVertexNormals();
+  const wall = new THREE.Mesh(geo, std('#221e1a', { roughness: 1 }));
+  wall.position.set(s * 21, yAt(6000) - wallH / 2 + 10, -40); scene.add(wall);
+}
+add('Supergiant amphipod', 'Alicella gigantea · up to 34 cm long', 6500, -5, -12, B.amphipod(1.5, '#efe9dc'), { labelY: 1.2 });
+add('Mariana snailfish', 'Pseudoliparis swirei · lives to ~8,000 m', 7000, 3, -13, B.snailfish(), { yaw: -2.8, labelY: 1 });
+add('', '', 7100, 7, -18, B.snailfish(), { yaw: 2.6 });
+add('', '', 7200, -2, -19, B.snailfish(), { yaw: .4 });
+add('Snailfish at 8,336 m', 'Deepest fish ever filmed (2022)', 8336, 3, -12, B.snailfish(), { yaw: -2.9, labelY: 1 });
+add('Hirondellea gigas', 'Amphipods that scavenge the trench', 9400, 2, -14, B.swarm(160, '#f2ecdf', 3), { labelY: 2 });
+// Challenger Deep floor
+const floorY = yAt(10935) - 3;
+{
+  const geo = new THREE.PlaneGeometry(260, 260, 140, 140); geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, noise(p.getX(i) * .08, 0, p.getZ(i) * .08) * 1.2 + noise(p.getX(i) * .6, 1, p.getZ(i) * .6) * .12);
+  geo.computeVertexNormals();
+  const floor = new THREE.Mesh(geo, std('#3d362c', { roughness: 1 }));
+  floor.position.set(0, floorY, -40); scene.add(floor);
+}
+// Same height function as the floor vertices above (floor mesh sits at z = -40).
+const floorAt = (x, z) => floorY + noise(x * .08, 0, (z + 40) * .08) * 1.2 + noise(x * .6, 1, (z + 40) * .6) * .12;
+add('Xenophyophore', 'A single cell up to 10 cm across', 10935, -3, -9, B.xeno(), { labelY: .9, y: floorAt(-3, -9) + .3 });
+for (const [x, z] of [[-6, -13], [-1.5, -15], [3.5, -11], [7, -17]]) add('', '', 10935, x, z, B.xeno(), { y: floorAt(x, z) + .3 });
+add('Sea cucumber', 'Holothurians roam the deepest trenches', 10935, 3, -8, B.cucumber(), { yaw: 2.4, labelY: .9, y: floorAt(3, -8) + .3 });
+add('Hirondellea gigas', 'The scavengers of the deepest floor', 10935, -1, -12, B.swarm(120, '#f2ecdf', 2.5), { labelY: 2.2, y: floorAt(-1, -12) + 1.4 });
+
+// ---------- surface light ----------
+const surface = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshBasicMaterial({ color: '#cdeeff', transparent: true, opacity: .7, side: THREE.DoubleSide }));
+surface.rotation.x = Math.PI / 2; surface.position.y = 8; scene.add(surface);
+const rayTex = (() => {
+  const c = Object.assign(document.createElement('canvas'), { width: 64, height: 256 }), g = c.getContext('2d');
+  const v = g.createLinearGradient(0, 0, 0, 256); v.addColorStop(0, 'rgba(255,255,255,.9)'); v.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = v; g.fillRect(0, 0, 64, 256);
+  g.globalCompositeOperation = 'destination-in';
+  const h = g.createLinearGradient(0, 0, 64, 0); h.addColorStop(0, 'rgba(0,0,0,0)'); h.addColorStop(.5, 'rgba(0,0,0,1)'); h.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = h; g.fillRect(0, 0, 64, 256);
+  return new THREE.CanvasTexture(c);
+})();
+const rays = Array.from({ length: 14 }, (_, i) => {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2 + Math.random() * 3, 70), new THREE.MeshBasicMaterial({ map: rayTex, color: '#dff4ff', transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const x = (Math.random() - .5) * 70, z = -10 - Math.random() * 50;
+  m.position.set(x, 8 - 35, z); m.rotation.set(0, Math.atan2(-x, -z), (Math.random() - .5) * .25);
+  m.userData.k = i; scene.add(m); return m;
+});
+
+// ---------- marine snow ----------
+const SNOW = 1800, BOX = 44;
+const snowPos = new Float32Array(SNOW * 3);
+for (let i = 0; i < SNOW; i++) snowPos.set([(Math.random() - .5) * 60, (Math.random() - .5) * BOX, -Math.random() * 50 + 4], i * 3);
+const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowMat = new THREE.PointsMaterial({ size: .13, map: glowTex, color: '#d8ecf5', transparent: true, depthWrite: false, opacity: .3 });
+const snow = new THREE.Points(snowGeo, snowMat); snow.frustumCulled = false; scene.add(snow);
+
+// ---------- depth gauge ----------
+const gauge = document.getElementById('gauge'), dot = document.getElementById('dot');
+KEYS.forEach((d, i) => {
+  const tick = document.createElement('i');
+  tick.style.top = `${i / (KEYS.length - 1) * 100}%`;
+  tick.dataset.m = d === 10935 ? '10,935 m' : `${d.toLocaleString('en-US')} m`;
+  gauge.append(tick);
+});
+
+// ---------- cards fade in ----------
+const io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('in', e.isIntersecting)), { threshold: .35 });
+document.querySelectorAll('.card').forEach(c => io.observe(c));
+
+// ---------- loop ----------
+const depthEl = document.getElementById('depth'), zoneEl = document.getElementById('zone'), metaEl = document.getElementById('meta');
+const progress = () => clamp(scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight));
+let tCur = progress(), mx = 0, my = 0;
+addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; } });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+const slow = matchMedia('(prefers-reduced-motion: reduce)').matches ? .3 : 1;
+const v = new THREE.Vector3();
+let shownDepth = -1, time = 0, last = performance.now();
+
+renderer.setAnimationLoop(now => {
+  const dt = Math.min((now - last) / 1000, .1); last = now;
+  time += dt * slow;
+  tCur += (progress() - tCur) * Math.min(1, dt * 5);
+  const depth = depthAt(tCur);
+
+  camera.position.set(innerWidth > 700 ? 4 : 0, -tCur * SPAN, 0);
+  camera.rotation.set(-my * .12 - smooth(.93, 1, tCur) * .32, -mx * .2, 0);
+
+  // Darkness: water colour, fog distance and lights all fall off with depth.
+  waterAt(depth, scene.background); scene.fog.color.copy(scene.background);
+  scene.fog.far = 95 - smooth(0, 1000, depth) * 40;
+  sun.intensity = 2.4 * Math.exp(-depth / 180);
+  sky.intensity = 1.8 * Math.exp(-depth / 280) + .02;
+  lamp.intensity = smooth(150, 1400, depth) * 1.5;
+  const surf = 1 - smooth(0, 160, depth);
+  rays.forEach(r => { r.material.opacity = (.16 + .1 * Math.sin(time * .6 + r.userData.k)) * surf; r.visible = surf > 0; });
+  surface.visible = surf > 0;
+  snowMat.opacity = .2 + smooth(100, 1500, depth) * .45;
+
+  const camY = camera.position.y, sp = snowGeo.attributes.position;
+  for (let i = 0; i < SNOW; i++) {
+    let y = sp.getY(i) - dt * .25;
+    y = camY + ((((y - camY) + BOX / 2) % BOX) + BOX) % BOX - BOX / 2;
+    sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(time * .3 + i) * dt * .05);
+  }
+  sp.needsUpdate = true;
+
+  for (const c of life) {
+    const near = Math.abs(c.home.y - camY) < 60;
+    c.obj.visible = near;
+    if (near && c.update) c.update(time, c.obj, c.home, c.k);
+    if (!c.el) continue;
+    v.set(c.obj.position.x, c.obj.position.y + c.labelY, c.obj.position.z);
+    const dist = v.distanceTo(camera.position);
+    v.project(camera);
+    const op = near && v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05 ? clamp(1 - (dist - 18) / 16) : 0;
+    c.el.style.opacity = op.toFixed(2);
+    if (op > 0) c.el.style.transform = `translate(${(v.x + 1) / 2 * innerWidth}px, ${(1 - v.y) / 2 * innerHeight}px) translate(0, -100%)`;
+  }
+
+  const d = Math.round(depth);
+  if (d !== shownDepth) {
+    shownDepth = d;
+    depthEl.textContent = d.toLocaleString('en-US');
+    zoneEl.textContent = zoneAt(d);
+    metaEl.textContent = `≈ ${Math.round(1 + d / 10.06).toLocaleString('en-US')} atm · ${(d / 1000).toFixed(2)} km down`;
+  }
+  dot.style.top = `${tCur * 100}%`;
+
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
