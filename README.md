@@ -20,14 +20,3 @@ with a glowing lure, a gulper eel, a dumbo octopus, sea pigs, a tripod fish, sna
 supergiant amphipods and the xenophyophores and amphipods of the trench floor.
 
 Every creature is built from three.js primitives, so the project has no models, images or build step.
-
-## Run locally
-
-The page uses ES modules, so serve it over HTTP instead of opening the file directly:
-
-```sh
-python -m http.server 8000
-# open http://localhost:8000
-```
-
-three.js 0.186.1 loads from the jsDelivr CDN.
