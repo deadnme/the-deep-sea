@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=6';
+import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=7';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);
@@ -457,7 +457,7 @@ const B = {
     }];
   },
   // The bow of RMS Titanic as it lies at 3,800 m: sunk in the sediment, the foremast fallen back
-  // over the bridge, the hull furred with algae. Bow towards +x.
+  // over the bridge, the hull draped in rusticles (iron-eating bacteria; no algae grows this deep). Bow towards +x.
   titanic() {
     const g = new THREE.Group(), L = 16, B = 2.4, H = 3.4;
     // One surface for the hull and everything fixed to it. u: break (0) to stem (1),
@@ -465,8 +465,8 @@ const B = {
     const beam = u => Math.min(1, (1 - u) / .45) ** .85;
     const hull = (u, v, s) => [(u - .5) * L, (v - .5) * H + v * u ** 3 * 1.3, s * B / 2 * beam(u) * (.68 + .32 * v)];
     const coat = std('#ffffff', { vertexColors: true, roughness: .95, side: THREE.DoubleSide });
-    const C = ['#3a2a21', '#6e3a20', '#2c4024', '#5a7536'].map(c => new THREE.Color(c)), moss = new THREE.Color(), c = new THREE.Color();
-    // Rust runs down the plates; algae is thickest on anything facing up.
+    const C = ['#3a2a21', '#6e3a20', '#7b3517', '#c06a2c'].map(c => new THREE.Color(c)), moss = new THREE.Color(), c = new THREE.Color();
+    // Rust runs down the plates; the rusticle crust is thickest on anything facing up.
     const crust = geo => {
       geo.computeVertexNormals();
       const p = geo.attributes.position, n = geo.attributes.normal, col = new Float32Array(p.count * 3);
@@ -534,7 +534,7 @@ const B = {
       g.add(crust(pipe(rail, .025, coat).geometry));
     }
 
-    // Portholes and windows, then patches of algae, all instanced.
+    // Portholes and windows, then lumps of rusticle crust, all instanced.
     const d = new THREE.Object3D();
     const holes = new THREE.InstancedMesh(new THREE.SphereGeometry(.07, 8, 6), std('#0b0807', { roughness: .4 }), 300);
     let n = 0;
@@ -547,7 +547,7 @@ const B = {
     holes.count = n; g.add(holes);
 
     const rnd = (a, b) => a + Math.random() * (b - a);
-    const brown = new THREE.Color('#5b5a2e');
+    const brown = new THREE.Color('#4a2616');
     const tint = () => c.lerpColors(C[2], C[3], Math.random()).lerp(brown, Math.random() * .4);
     const blob = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), std('#ffffff', { roughness: 1, flatShading: true }), 160);
     for (let i = 0; i < 160; i++) {
@@ -558,43 +558,25 @@ const B = {
     }
     g.add(blob);
 
-    // Strands hanging from every edge, swaying in the current.
-    const strandGeo = new THREE.ConeGeometry(.045, 1, 4); strandGeo.rotateX(Math.PI); strandGeo.translate(0, -.5, 0);
-    const strands = [];
+    // Rusticles: brittle, icicle-like growths hanging from every edge and below the portholes.
+    const rusticleGeo = new THREE.ConeGeometry(.06, 1, 5); rusticleGeo.rotateX(Math.PI); rusticleGeo.translate(0, -.5, 0);
+    const hang = new THREE.InstancedMesh(rusticleGeo, std('#ffffff', { roughness: 1 }), 240);
     for (let i = 0; i < 240; i++) {
       const s = i % 2 ? 1 : -1;
-      let x, y, z, len = rnd(.25, 1.5);
+      let x, y, z, len = rnd(.2, 1.1);
       if (i < 130) { [x, y, z] = hull(rnd(.02, .99), 1, s); z += s * .03; }
       else if (i < 180) { x = rnd(-7.6, .1); y = deck + .84; z = s * 1.06; }
       else if (i < 210) { x = rnd(-6.7, -.7); y = deck + 1.54; z = s * .78; }
       else { [x, y, z] = hull(rnd(.06, .9), Math.random() < .5 ? .8 : .66, s); z += s * .02; len = rnd(.15, .45); }
-      strands.push([x, y, z, rnd(.6, 1.4), len, rnd(0, TAU), s]);
+      const w = rnd(.6, 1.5);
+      d.position.set(x, y, z); d.rotation.set(-s * rnd(0, .12), 0, rnd(-.08, .08)); d.scale.set(w, len, w);
+      d.updateMatrix(); hang.setMatrixAt(i, d.matrix); hang.setColorAt(i, tint());
     }
-    const hang = new THREE.InstancedMesh(strandGeo, std('#ffffff', { roughness: .9 }), strands.length);
-    strands.forEach((_, i) => hang.setColorAt(i, tint()));
     g.add(hang);
 
-    // Ribbons of weed rising from the decks.
-    const weedMat = std('#5f803a', { roughness: .8 }), weeds = [];
-    for (let i = 0; i < 12; i++) {
-      const [x, y, z] = i % 2 ? hull(rnd(.56, .95), 1, rnd(-.6, .6)) : [rnd(-6.5, -1), deck + 1.55, rnd(-.6, .6)], h = rnd(1, 2.4);
-      const w = at(new THREE.Group(), x, y, z);
-      w.add(pipe([[0, 0, 0], [.12, h * .35, .05], [-.1, h * .7, -.05], [.05, h, 0]], .035, weedMat));
-      g.add(w); weeds.push(w);
-    }
-
-    const sway = t => {
-      strands.forEach(([x, y, z, w, l, ph, s], i) => {
-        d.position.set(x, y, z); d.rotation.set(-s * (.06 + Math.sin(t * .5 + ph) * .05), 0, Math.sin(t * .7 + ph) * .14); d.scale.set(w, l, w);
-        d.updateMatrix(); hang.setMatrixAt(i, d.matrix);
-      });
-      hang.instanceMatrix.needsUpdate = true;
-      weeds.forEach((w, i) => { w.rotation.z = Math.sin(t * .6 + i) * .12; w.rotation.x = Math.cos(t * .5 + i) * .08; });
-    };
-    sway(0);
     // Below eye level and tipped towards the camera, so the decks and the bow railing show.
     const wreck = new THREE.Group(); g.position.y = -3.2; wreck.add(g); wreck.rotation.x = .3;
-    return [wreck, sway];
+    return [wreck, null];
   },
   gulper() {
     const g = new THREE.Group(), m = std('#151012', { roughness: .6 });
