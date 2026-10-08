@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { stages, depthToS, sToDepth, stopDepth as D } from './journey.js?v=3';
+import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=4';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);
@@ -153,14 +153,12 @@ function amphipod() {
   group.rotation.set(.15,-.2,.17);return group;
 }
 
-
 // ---------- one continuous descent ----------
-// Each stage occupies SEG world units, so world height follows scroll, not metres.
-const TAU = Math.PI * 2, SEG = 100;
+// One world unit is 1/K metres of water, so world height follows depth exactly (see journey.js).
+const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const smoothstep = (a, b, v) => { const x = clamp((v - a) / (b - a)); return x * x * (3 - 2 * x); };
-const yAt = d => -depthToS(d) * SEG;
-const WATER = [[0, '#1d6f88'], [200, '#0e485e'], [1000, '#092638'], [4000, '#040e1f'], [6000, '#030b15'], [8200, '#02080e'], [10935, '#010409']]
+const WATER = [[0, '#1d6f88'], [200, '#0e485e'], [1000, '#092638'], [4000, '#040e1f'], [6000, '#030b15'], [8200, '#02080e'], [FLOOR, '#010409']]
   .map(([d, c]) => [d, new THREE.Color(c)]);
 const waterAt = (d, out) => {
   let i = 0;
@@ -183,6 +181,7 @@ const halo = (color, size, opacity = 1) => {
 };
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: .65, ...o });
 const lum = color => new THREE.MeshBasicMaterial({ color, fog: false, toneMapped: false });
+const at = (o, x, y, z) => { o.position.set(x, y, z); return o; };
 const ball = (r, material, sx = 1, sy = 1, sz = 1, seg = 20) => {
   const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.ceil(seg * .75)), material);
   m.scale.set(sx, sy, sz); return m;
@@ -204,6 +203,12 @@ const rock = (r, color, amt = .25) => {
 const fishGeos = len => {
   const body = new THREE.SphereGeometry(.5, 16, 12); body.scale(len, len * .32, len * .16);
   const tail = new THREE.ConeGeometry(len * .2, len * .35, 4); tail.rotateZ(-Math.PI / 2); tail.scale(1, 1, .25); tail.translate(-len * .62, 0, 0);
+  return [body, tail];
+};
+// Hatchetfish: deep, flat, blade-like bodies.
+const hatchetGeos = len => {
+  const body = new THREE.SphereGeometry(.5, 14, 10); body.scale(len, len * .75, len * .14);
+  const tail = new THREE.ConeGeometry(len * .18, len * .3, 4); tail.rotateZ(-Math.PI / 2); tail.scale(1, 1, .25); tail.translate(-len * .6, len * .1, 0);
   return [body, tail];
 };
 const fish = (len, material) => {
@@ -344,6 +349,113 @@ const B = {
       o.rotation.z = Math.sin(t * .6) * .03; fluke.rotation.z = Math.sin(t * .9) * .25;
     }];
   },
+  beaked() {
+    const g = new THREE.Group(), m = std('#857a70', { roughness: .8, side: THREE.DoubleSide });
+    g.add(ball(.5, m, 6, 1.25, 1.25));
+    g.add(at(ball(.5, std('#a89f94', { roughness: .8 }), 1.7, 1.05, 1.05), 2.5, .1, 0));   // pale head of an older animal
+    const beak = cone(.24, .8, m, 10); beak.rotation.z = -Math.PI / 2; beak.position.set(3.65, -.1, 0); g.add(beak);
+    fin(g, [[-1, .5], [-1.6, 1.05], [-1.95, .5]], m);
+    const fluke = at(ball(.5, m, .7, .06, 2.2), -3.3, 0, 0); g.add(fluke);
+    for (const s of [1, -1]) {
+      const p = at(ball(.5, m, .7, .05, .35), 1.4, -.4, s * .55); p.rotation.y = s * .4; g.add(p);
+      g.add(at(ball(.07, std('#111')), 2.95, .15, s * .42));
+    }
+    return [g, (t, o, h, k) => {
+      const a = (t * .7 + k * 10) % 64;
+      o.position.set(h.x - 32 + a, h.y + Math.sin(t * .25) * .4, h.z);
+      fluke.rotation.z = Math.sin(t * 1.1) * .25; o.rotation.z = Math.sin(t * .6) * .03;
+    }];
+  },
+  // Sharks face +x and cruise a slow loop around their home.
+  shark({ len, color, snout = 0, eye = '#0c0c0c', speed = .07, radius = 4 }) {
+    const g = new THREE.Group(), m = std(color, { roughness: .7, side: THREE.DoubleSide });
+    g.add(ball(.5, m, len, len * .19, len * .19));
+    const tail = new THREE.Group(); tail.position.x = -len * .46; g.add(tail);
+    fin(tail, [[0, 0], [-len * .3, len * .2], [-len * .2, 0], [-len * .16, -len * .1]], m);
+    fin(g, [[len * .02, len * .08], [-len * .1, len * .2], [-len * .14, len * .08]], m);
+    for (const s of [1, -1]) {
+      const p = at(ball(.5, m, len * .22, len * .015, len * .12), len * .12, -len * .07, s * len * .1); p.rotation.set(s * .3, s * .5, 0); g.add(p);
+      g.add(at(ball(len * .022, std(eye, { roughness: .15 })), len * .36, len * .03, s * len * .06));
+    }
+    if (snout) { const c = cone(len * .05, len * snout, m, 10); c.rotation.z = -Math.PI / 2; c.scale.z = .5; c.position.set(len * (.48 + snout / 2), len * .02, 0); g.add(c); }
+    return [g, (t, o, h, k) => {
+      const a = t * speed + k;
+      o.position.set(h.x + Math.cos(a) * radius, h.y + Math.sin(t * .3 + k) * .3, h.z + Math.sin(a) * radius * .5);
+      o.rotation.y = -a - Math.PI / 2;
+      tail.rotation.y = Math.sin(t * 1.6 + k) * .35;
+    }];
+  },
+  barreleye() {
+    const g = fish(1.5, std('#4a3a30', { roughness: .55 }));
+    g.add(at(ball(.32, std('#d6f0f2', { transparent: true, opacity: .22, roughness: .05, depthWrite: false }), 1.35, 1, .8), .36, .2, 0));
+    for (const s of [1, -1]) {
+      g.add(at(ball(.06, lum('#7dffb0'), 1, 1, 1, 10), .38, .2, s * .07));   // tubular eyes, looking up through the shield
+      const f = at(ball(.5, std('#5a4a3e', { transparent: true, opacity: .6, side: THREE.DoubleSide }), .55, .03, .3), 0, -.05, s * .28); f.rotation.x = s * .4; g.add(f);
+    }
+    return [g, drift(.3, .4)];
+  },
+  dragonfish() {
+    const g = new THREE.Group(), m = std('#120d0e', { roughness: .3, metalness: .2, side: THREE.DoubleSide });
+    const pts = []; for (let i = 0; i <= 10; i++) pts.push([-i * .32, Math.sin(i * .6) * .08, 0]);
+    const body = pipe(pts, .13, m); body.scale.set(1, 1.3, .7); g.add(body);
+    g.add(at(ball(.2, m, 1.3, 1, .8), .1, 0, 0));
+    g.add(pipe([[.1, -.1, 0], [.45, -.2, 0], [.55, -.08, 0]], .03, m));
+    fin(g, [[-3.15, 0], [-3.6, .28], [-3.6, -.28]], m);
+    const red = halo('#ff4433', .9); red.position.set(.12, -.04, .14); g.add(red);
+    g.add(at(ball(.04, lum('#ff5a40'), 1, 1, 1, 8), .12, -.04, .14));
+    g.add(at(halo('#7fd8ff', .5, .7), .05, .06, .15));
+    return [g, (t, o, h, k) => {
+      o.position.y = h.y + Math.sin(t * .4 + k) * .35; o.rotation.z = Math.sin(t * .5 + k) * .06;
+      red.material.opacity = .65 + .35 * Math.sin(t * 2.2 + k);
+    }];
+  },
+  isopod() {
+    const g = new THREE.Group(), shell = std('#b9aa9b', { roughness: .5 }), leg = std('#8a7d72');
+    for (let i = 0; i < 8; i++) {
+      const x = .85 - i * .26, w = .5 - Math.abs(i - 3.5) * .04, y = .12 - (i - 3.5) ** 2 * .008;
+      g.add(at(ball(.5, shell, .34, .3, w * 2), x, y, 0));
+      for (const s of [1, -1]) g.add(pipe([[x, -.02, s * w * .8], [x + .08, -.18, s * (w + .15)], [x + .14, -.3, s * (w + .22)]], .025, leg));
+    }
+    g.add(at(ball(.5, shell, .35, .25, .7), 1.12, .06, 0));
+    g.add(at(ball(.5, shell, .45, .08, .75), -1.3, .02, 0));
+    for (const s of [1, -1]) {
+      g.add(at(ball(.07, std('#20262b', { roughness: .2 }), 1, 1, 1, 10), 1.2, .12, s * .25));
+      g.add(pipe([[1.25, .05, s * .15], [1.7, .12, s * .4], [2.1, .05, s * .55]], .02, leg));
+    }
+    return [g, (t, o, h, k) => { o.position.x = h.x + Math.sin(t * .05 + k) * .6; }];
+  },
+  // Black-smoker chimney with a rising plume and a thicket of Riftia tube worms.
+  vent() {
+    const g = new THREE.Group();
+    for (const [x, y, r] of [[0, 0, 1.3], [.1, 1.6, 1], [-.05, 2.9, .75], [.05, 3.9, .5]]) {
+      const c = rock(r, '#2c2522', .3); c.scale.y = 1.25; c.position.set(x, y, 0); g.add(c);
+    }
+    const N = 160, pos = new Float32Array(N * 3), seeds = Array.from({ length: N }, () => [Math.random(), Math.random() * TAU, Math.random()]);
+    const plumeGeo = new THREE.BufferGeometry(); plumeGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const plume = new THREE.Points(plumeGeo, new THREE.PointsMaterial({ size: .7, map: glowTex, color: '#6f675e', transparent: true, opacity: .4, depthWrite: false }));
+    plume.frustumCulled = false; g.add(plume);
+    const tubeMat = std('#e9e4da', { roughness: .4 }), plumeMat = std('#b3122a', { roughness: .5, emissive: '#3a0008' }), worms = [];
+    for (let i = 0; i < 40; i++) {
+      const a = i * 2.4, r = 1.5 + (i % 7) * .18, len = .7 + (i * 7 % 5) * .22;
+      const w = at(new THREE.Group(), Math.cos(a) * r, -1.5, Math.sin(a) * r);
+      w.add(at(new THREE.Mesh(new THREE.CylinderGeometry(.04, .055, len, 6), tubeMat), 0, len / 2, 0));
+      w.add(at(ball(.09, plumeMat, 1, 2.4, 1, 10), 0, len + .16, 0));
+      w.rotation.set((Math.random() - .5) * .3, 0, (Math.random() - .5) * .3); w.userData.tilt = [w.rotation.x, w.rotation.z];
+      g.add(w); worms.push(w);
+    }
+    const tick = t => {
+      seeds.forEach(([p, a, s], i) => {
+        const f = (t * .12 + p) % 1;
+        pos.set([Math.cos(a) * f * (1 + s) + Math.sin(t + i) * .1, 4.3 + f * 7, Math.sin(a) * f * (1 + s)], i * 3);
+      });
+      plumeGeo.attributes.position.needsUpdate = true;
+    };
+    tick(0);
+    return [g, t => {
+      tick(t);
+      worms.forEach((w, i) => { w.rotation.z = w.userData.tilt[1] + Math.sin(t * .9 + i) * .06; w.rotation.x = w.userData.tilt[0] + Math.cos(t * .7 + i) * .05; });
+    }];
+  },
   gulper() {
     const g = new THREE.Group(), m = std('#151012', { roughness: .6 });
     const pts = []; for (let i = 0; i <= 20; i++) pts.push([-i * .45, Math.sin(i * .5) * .5, Math.cos(i * .35) * .3]);
@@ -401,6 +513,43 @@ const B = {
   },
 };
 
+// `model` keys used by journey.js; `args` are passed through.
+const MODELS = {
+  turtle: () => B.turtle(),
+  sardines: () => school(fishGeos(.5), std('#a9c4d6', { roughness: .35, metalness: .15 }), 140, 5, .35),
+  manta: () => wrap(manta, .55, .6),
+  moonJelly: (r = 1.1) => B.jelly(r, '#dfe8ff'),
+  tuna: () => school(fishGeos(1.6), std('#4a6e92', { roughness: .35, metalness: .15 }), 14, 6, .45),
+  jellyDeep: () => wrap(jelly, .7, .8),
+  hatchetfish: () => school(hatchetGeos(.45), std('#c9d4dc', { metalness: .6, roughness: .25, emissive: '#27507a', emissiveIntensity: .35 }), 60, 3.5, .25),
+  lanternfish: () => school(fishGeos(.45), std('#26384d', { emissive: '#2b6bff', emissiveIntensity: .7, roughness: .4 }), 90, 4, .3),
+  siphonophore: () => B.siphonophore(),
+  squid: () => B.squid(9, '#8c2d22'),
+  barreleye: () => B.barreleye(),
+  vampire: () => B.vampire(),
+  atolla: () => B.jelly(1, '#9a1d1d', '#4fa8ff'),
+  sixgill: () => B.shark({ len: 4.2, color: '#5b5850', eye: '#5fb39a', speed: .06 }),
+  angler: () => wrap(angler, .55, .3),
+  whale: () => B.whale(),
+  goblin: () => B.shark({ len: 3.4, color: '#c79e9a', snout: .28, speed: .08 }),
+  isopod: () => B.isopod(),
+  dragonfish: () => B.dragonfish(),
+  greenland: () => B.shark({ len: 5.5, color: '#4c5257', speed: .035, radius: 5 }),
+  gulper: () => B.gulper(),
+  vent: () => B.vent(),
+  beaked: () => B.beaked(),
+  fangtooth: () => B.fangtooth(),
+  dumbo: (s = .5) => wrap(dumbo, s, .35),
+  tripod: () => B.tripod(),
+  seaPig: () => B.seaPig(),
+  bigAmphipod: () => B.bigAmphipod(1.5, '#efe9dc'),
+  snailfish: (s = .45) => wrap(snailfish, s, .4),
+  swarm: (n = 160, r = 3) => B.swarm(n, '#f2ecdf', r),
+  amphipod: () => wrap(amphipod, .32, .15),
+  xeno: () => B.xeno(),
+  cucumber: () => B.cucumber(),
+};
+
 export function createOcean(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
@@ -424,69 +573,21 @@ export function createOcean(container) {
   lamp.position.set(0, 1, 0); camera.add(lamp);
   scene.add(sky, key, rim);
 
-  // ---------- creatures ----------
-  const life = [];
-  const labelsEl = document.getElementById('labels');
-  function add(built, depth, x, z, { name, sub, guide, yaw = 0, labelY = 1.6, y = yAt(depth) } = {}) {
-    const [obj, update] = built;
-    obj.position.set(x, y, z);
-    obj.rotation.y = obj.userData.yaw = yaw;
-    scene.add(obj);
-    let el = null;
-    if (name) {
-      el = document.createElement(guide ? 'button' : 'div');
-      el.className = 'specimen';
-      el.innerHTML = `<span class="specimen-line"></span><span class="specimen-name">${name}<small>${sub}</small></span>${guide ? '<span class="specimen-plus">+</span>' : ''}`;
-      if (guide) { el.dataset.creature = guide; el.setAttribute('aria-label', `Field guide: ${name}`); } else el.setAttribute('aria-hidden', 'true');
-      labelsEl.append(el);
-    }
-    life.push({ obj, update, home: obj.position.clone(), k: Math.random() * TAU, el, labelY });
-  }
+  // The underside of the sea surface. At z = -15 it meets the bottom of the page's sky band.
+  const surface = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: '#a8e6e4', transparent: true, opacity: .3, side: THREE.DoubleSide, depthWrite: false }));
+  surface.rotation.x = Math.PI / 2; scene.add(surface);
 
-  // Sunlight zone
-  add(wrap(manta, .55, .6), D.manta, 3, -17, { name: 'Oceanic manta ray', sub: 'Mobula birostris', guide: 'manta', labelY: 2.5 });
-  add(school(fishGeos(.5), std('#a9c4d6', { roughness: .35, metalness: .15 }), 140, 5, .35), 100, 6, -21, { name: 'Sardines', sub: 'Schooling fish of the upper 100 m', labelY: 3 });
-  add(B.turtle(), D.turtle, 3, -17, { name: 'Green sea turtle', sub: 'Breathes air, grazes near the surface' });
-  add(school(fishGeos(1.6), std('#4a6e92', { roughness: .35, metalness: .15 }), 14, 6, .45), 165, 4, -21, { name: 'Yellowfin tuna', sub: 'Fast hunter of open water', labelY: 2.5 });
-  add(B.jelly(1.1, '#dfe8ff'), 70, 1, -15, { name: 'Moon jellyfish', sub: 'Aurelia aurita' });
-  add(B.jelly(.8, '#dfe8ff'), 78, 6, -21);
-  // Twilight zone
-  add(wrap(jelly, .7, .8), D.jelly, 3, -15, { name: 'Deep-sea jellyfish', sub: 'Bioluminescent drifter', guide: 'jelly', labelY: 2 });
-  add(school(fishGeos(.45), std('#26384d', { emissive: '#2b6bff', emissiveIntensity: .7, roughness: .4 }), 90, 4, .3), 420, 5, -18, { name: 'Lanternfish', sub: 'Photophores glow along the belly', labelY: 2.6 });
-  add(B.siphonophore(), 520, 3, -22, { name: 'Siphonophore', sub: 'A colony of many specialised animals' });
-  add(B.squid(9, '#8c2d22'), D.squid, 2, -22, { name: 'Giant squid', sub: 'Architeuthis dux, eyes up to 27 cm wide', labelY: 2 });
-  add(B.jelly(1, '#9a1d1d', '#4fa8ff'), 800, 5, -16, { name: 'Atolla jellyfish', sub: 'Flashes a blue "burglar alarm"' });
-  add(B.vampire(), 920, 2, -15, { name: 'Vampire squid', sub: 'Vampyroteuthis infernalis', labelY: 1.8 });
-  // Midnight zone
-  add(B.whale(), 1700, 0, -34, { name: 'Sperm whale', sub: 'Hunts squid on dives past 1,000 m', labelY: 3 });
-  add(wrap(angler, .55, .3), D.angler, 3, -15, { name: 'Deep-sea anglerfish', sub: 'Ceratioid anglerfish', guide: 'angler', yaw: -.3, labelY: 2.4 });
-  add(B.gulper(), D.gulper, 3, -16, { name: 'Gulper eel', sub: 'Jaws open wider than its body', yaw: .3 });
-  add(B.fangtooth(), 3300, 4, -14, { name: 'Fangtooth', sub: 'Largest teeth for its size of any fish', yaw: -2.6, labelY: 1 });
-  // Abyssal zone
-  add(wrap(dumbo, .5, .35), D.dumbo, 3, -15, { name: 'Dumbo octopus', sub: 'Grimpoteuthis', guide: 'dumbo', labelY: 1.6 });
-  const ledge = rock(7, '#3f382e', .18); ledge.scale.y = .28; ledge.position.set(3, yAt(D.ledge) - 2.6, -20); scene.add(ledge);
-  add(B.seaPig(), D.ledge, 0, -17, { name: 'Sea pig', sub: 'Scotoplanes, a sea cucumber that walks', yaw: .6, labelY: 1 });
-  add(B.seaPig(), D.ledge, 2.5, -19.5, { yaw: 2 });
-  add(B.tripod(), D.ledge, 6, -21, { name: 'Tripod fish', sub: 'Bathypterois, stands on long fin rays', yaw: -.3, labelY: 1.2 });
-  // Hadal zone: trench walls from 6,000 m to the floor
-  const wallTop = yAt(6000), wallH = wallTop - yAt(10935) + 20;
+  // Hadal trench walls, from 6,000 m down past the floor.
+  const wallTop = yAt(6000), wallH = wallTop - yAt(FLOOR) + 20;
   for (const s of [1, -1]) {
-    const geo = new THREE.BoxGeometry(10, wallH, 120, 4, 90, 40), p = geo.attributes.position;
+    const geo = new THREE.BoxGeometry(10, wallH, 120, 4, 220, 40), p = geo.attributes.position;
     for (let i = 0; i < p.count; i++) if (p.getX(i) * s < 0) p.setX(i, p.getX(i) + noise(p.getY(i) * .15, p.getZ(i) * .15, s) * 2.5 + noise(p.getY(i) * .5, p.getZ(i) * .5, 2) * .6);
     geo.computeVertexNormals();
-    const wall = new THREE.Mesh(geo, std('#221e1a', { roughness: 1 }));
+    const wall = new THREE.Mesh(geo, std('#3a332b', { roughness: 1 }));
     wall.position.set(s * 21 - 3, wallTop - wallH / 2 + 10, -40); scene.add(wall);
   }
-  add(wrap(snailfish, .45, .4), D.snailfish, 3, -14, { name: 'Mariana snailfish', sub: 'Pseudoliparis swirei', guide: 'snailfish', labelY: 1.2 });
-  add(B.bigAmphipod(1.5, '#efe9dc'), D.bigAmphipod, 4, -13, { name: 'Supergiant amphipod', sub: 'Alicella gigantea, up to 34 cm long', labelY: 1.2 });
-  add(wrap(snailfish, .25, .4), 7500, 6, -19, { yaw: 2.6 });
-  add(wrap(snailfish, .25, .4), 7700, 1, -20, { yaw: .4 });
-  // Below the fish limit
-  add(wrap(snailfish, .4, .4), D.deepest, 3, -14, { name: 'Snailfish at 8,336 m', sub: 'Deepest fish ever filmed (2022)', labelY: 1.2 });
-  add(B.swarm(160, '#f2ecdf', 3), D.swarm, 3, -15, { name: 'Hirondellea gigas', sub: 'Amphipods that scavenge the trench', labelY: 2 });
-  add(B.swarm(90, '#f2ecdf', 2.5), 10300, 5, -17);
-  // Challenger Deep floor
-  const floorY = yAt(D.floor) - 3;
+  // Challenger Deep floor, a few units below the 10,935 m line so the camera stops above it.
+  const floorY = yAt(FLOOR) - 3;
   {
     const geo = new THREE.PlaneGeometry(260, 260, 140, 140); geo.rotateX(-Math.PI / 2);
     const p = geo.attributes.position;
@@ -497,11 +598,30 @@ export function createOcean(container) {
   }
   // Same height function as the floor vertices (floor mesh sits at z = -40).
   const floorAt = (x, z) => floorY + noise(x * .08, 0, (z + 40) * .08) * 1.2 + noise(x * .6, 1, (z + 40) * .6) * .12;
-  add(wrap(amphipod, .32, .15), 10935, 0, -10, { name: 'Hadal amphipod', sub: 'Hirondellea gigas', guide: 'amphipod', labelY: 1.6, y: floorAt(0, -10) + 1.1 });
-  add(B.xeno(), 10935, -3.5, -8, { name: 'Xenophyophore', sub: 'A single cell up to 10 cm across', labelY: .8, y: floorAt(-3.5, -8) + .3 });
-  for (const [x, z] of [[-9, -16], [2, -17], [6, -14], [-2, -21]]) add(B.xeno(), 10935, x, z, { y: floorAt(x, z) + .3 });
-  add(B.cucumber(), 10935, -6.5, -12, { name: 'Sea cucumber', sub: 'Holothurians roam the deepest trenches', yaw: 2.4, labelY: .9, y: floorAt(-6.5, -12) + .3 });
-  add(B.swarm(120, '#f2ecdf', 2.5), 10935, 5, -20, { y: floorAt(5, -20) + 1.4 });
+
+  // ---------- creatures ----------
+  const life = [], placed = [];   // placed: [object, wide-screen x], re-laid out on resize
+  const labelsEl = document.getElementById('labels');
+  for (const c of creatures) {
+    const [obj, update] = MODELS[c.model](...(c.args ?? []));
+    obj.position.set(c.x, c.floor != null ? floorAt(c.x, c.z) + c.floor : yAt(c.depth), c.z);
+    obj.rotation.y = obj.userData.yaw = c.yaw ?? 0;
+    scene.add(obj); placed.push([obj, c.x]);
+    if (c.ground) {   // a flat rock under bottom-dwellers
+      const box = new THREE.Box3().setFromObject(obj), r = rock(c.ground, '#3f382e', .18);
+      r.scale.y = .2; r.position.set(c.x + 1, box.min.y - c.ground * .15, c.z - 3);
+      scene.add(r); placed.push([r, c.x + 1]);
+    }
+    let el = null;
+    if (c.name) {
+      el = document.createElement('button');
+      el.className = 'specimen'; el.dataset.creature = c.id;
+      el.innerHTML = `<span class="specimen-line"></span><span class="specimen-name">${c.name}<small>${c.latin}</small></span><span class="specimen-plus" aria-hidden="true">+</span>`;
+      el.setAttribute('aria-label', `About the ${c.name}`);
+      labelsEl.append(el);
+    }
+    life.push({ obj, update, home: obj.position.clone(), k: Math.random() * TAU, el, labelY: c.labelY ?? 1.6, w: 0, h: 0, shown: false });
+  }
 
   // ---------- marine snow ----------
   const SNOW = 1800, BOX = 44;
@@ -512,69 +632,90 @@ export function createOcean(container) {
   const snow = new THREE.Points(snowGeo, snowMat); snow.frustumCulled = false; scene.add(snow);
 
   // ---------- frame loop (driven by app.js) ----------
-  let pointerX = 0, pointerY = 0, time = 0, last = performance.now(), s = null, xOffset = 0, yLift = 0, labelRight = innerWidth;
-  addEventListener('pointermove', e => { pointerX = (e.clientX / innerWidth - .5) * 2; pointerY = (e.clientY / innerHeight - .5) * 2; }, { passive: true });
-  const resize = () => {
-    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-    // Wide screens keep the left half for text; narrow screens keep the top, so creatures sit lower.
-    xOffset = innerWidth > 640 ? -4.5 : 1.5;
-    yLift = innerWidth > 640 ? 0 : 3.6;
-    const gauge = document.querySelector('.sounder');
-    labelRight = (gauge ? gauge.getBoundingClientRect().left : innerWidth) - 24;
+  let pointerX = 0, time = 0, last = performance.now(), camX = -4.5, labelRight = innerWidth;
+  addEventListener('pointermove', e => { pointerX = (e.clientX / innerWidth - .5) * 2; }, { passive: true });
+  // Label sizes, and the page's text blocks in page coordinates: a label never sits on top of text.
+  let blocks = [];
+  const measureLabels = () => {
+    life.forEach(c => { if (c.el) { c.w = c.el.offsetWidth; c.h = c.el.offsetHeight; } });
+    blocks = [...document.querySelectorAll('main .at, .hero-sub, .ending')].map(el => {
+      const r = el.getBoundingClientRect();
+      return [r.left, r.right, r.top + scrollY - 12, r.bottom + scrollY + 12];
+    });
   };
-  addEventListener('resize', resize); resize();
+  const overText = (x0, x1, y0, y1) => blocks.some(([l, r, t, b]) => x0 < r && x1 > l && y0 + scrollY < b && y1 + scrollY > t);
+  document.fonts?.ready.then(measureLabels);
   renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); document.getElementById('render-error').hidden = false; });
   renderer.domElement.addEventListener('webglcontextrestored', () => { document.getElementById('render-error').hidden = true; });
   const v = new THREE.Vector3();
 
-  return { update(sample, paused) {
-    const now = performance.now(), dt = Math.min((now - last) / 1000, .1); last = now;
-    if (document.hidden) return;
-    if (!paused) time += dt;
-    const target = sample.s;
-    s = s === null || paused ? target : s + (target - s) * (1 - Math.exp(-dt * 5));
-    const depth = sToDepth(s);
+  return {
+    // `view` comes from layout() in journey.js and only changes with the width. When the mobile URL
+    // bar changes the height, the lens is widened or narrowed so world units keep the same pixel size.
+    resize(view, viewHeight) {
+      renderer.setSize(innerWidth, innerHeight);
+      camera.aspect = innerWidth / innerHeight;
+      camera.fov = 2 * Math.atan(Math.tan(view.fov * Math.PI / 360) * innerHeight / viewHeight) * 180 / Math.PI;
+      camera.updateProjectionMatrix();
+      // Wide screens keep the left side for text; narrow screens bring creatures to the middle.
+      const narrow = innerWidth < 760 || innerWidth < innerHeight;
+      camX = narrow ? 0 : -4.5;
+      for (const [o, x] of placed) o.position.x = narrow ? (x - 3) * .45 : x;
+      life.forEach(c => { c.home.x = c.obj.position.x; });
+      const gauge = document.querySelector('.gauge');
+      labelRight = (gauge ? gauge.getBoundingClientRect().left : innerWidth) - 24;
+      measureLabels();
+    },
+    update(depth, paused) {
+      const now = performance.now(), dt = Math.min((now - last) / 1000, .1); last = now;
+      if (document.hidden) return;
+      if (!paused) time += dt;
 
-    camera.position.set(xOffset + (paused ? 0 : pointerX * .35), -s * SEG + yLift + (paused ? 0 : pointerY * -.25), 0);
-    camera.rotation.set(-smoothstep(stages.length - .4, stages.length, s) * .3, 0, 0);
-    camera.updateMatrixWorld();
+      // No smoothing on y: the page and the scene must move together.
+      camera.position.set(camX + (paused ? 0 : pointerX * .35), yAt(depth), 0);
+      camera.rotation.set(-smoothstep(FLOOR - 70, FLOOR, depth) * .3, 0, 0);
+      camera.updateMatrixWorld();
 
-    // Darkness: water colour, fog and light all fall off with depth.
-    waterAt(depth, scene.background); scene.fog.color.copy(scene.background);
-    scene.fog.far = 95 - smoothstep(0, 1000, depth) * 40;
-    sky.intensity = 2.2 * Math.exp(-depth / 350) + .12;
-    key.intensity = 3 * Math.exp(-depth / 250);
-    lamp.intensity = smoothstep(150, 1400, depth) * 2.2;
-    snowMat.opacity = .2 + smoothstep(100, 1500, depth) * .45;
+      // Darkness: water colour, fog and light all fall off with depth.
+      waterAt(depth, scene.background); scene.fog.color.copy(scene.background);
+      scene.fog.far = 95 - smoothstep(0, 1000, depth) * 40;
+      sky.intensity = 2.2 * Math.exp(-depth / 350) + .12;
+      key.intensity = 3 * Math.exp(-depth / 250);
+      lamp.intensity = smoothstep(150, 1400, depth) * 2.2;
+      snowMat.opacity = .2 + smoothstep(100, 1500, depth) * .45;
 
-    const camY = camera.position.y, sp = snowGeo.attributes.position;
-    for (let i = 0; i < SNOW; i++) {
-      let y = sp.getY(i) - dt * .25;
-      y = camY + ((((y - camY) + BOX / 2) % BOX) + BOX) % BOX - BOX / 2;
-      sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(time * .3 + i) * dt * .05);
+      const camY = camera.position.y, sp = snowGeo.attributes.position;
+      for (let i = 0; i < SNOW; i++) {
+        let y = sp.getY(i) - dt * .25;
+        y = camY + ((((y - camY) + BOX / 2) % BOX) + BOX) % BOX - BOX / 2;
+        sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(time * .3 + i) * dt * .05);
+      }
+      sp.needsUpdate = true;
+
+      const top = 90, bottom = innerHeight - 140;   // keep labels clear of the header and instrument bar
+      for (const c of life) {
+        const near = Math.abs(c.home.y - camY) < 40;
+        c.obj.visible = near;
+        if (near && c.update && !paused) c.update(time, c.obj, c.home, c.k);
+        if (!c.el) continue;
+        let op = 0, px = 0, py = 0, flip = false;
+        if (near) {
+          v.set(c.obj.position.x, c.obj.position.y + c.labelY, c.obj.position.z).project(camera);
+          px = (v.x + 1) / 2 * innerWidth; py = (1 - v.y) / 2 * innerHeight;
+          // Label sits right of the creature; flip it to the left when the depth gauge is in the way.
+          flip = px + c.w > labelRight;
+          const x0 = flip ? px - c.w : px;
+          const inside = v.z < 1 && x0 > 0 && x0 + c.w <= labelRight + 24 && !overText(x0, x0 + c.w, py - c.h / 2, py + c.h / 2);
+          op = inside ? clamp(Math.min(py - top, bottom - py) / 60) : 0;
+        }
+        const show = op > .05;
+        if (show !== c.shown) { c.el.style.visibility = show ? 'visible' : 'hidden'; c.shown = show; }
+        if (!show) continue;
+        c.el.style.opacity = op.toFixed(2);
+        c.el.classList.toggle('flip', flip);
+        c.el.style.transform = `translate(${flip ? px - c.w : px}px, ${py}px) translateY(-50%)`;
+      }
+      renderer.render(scene, camera);
     }
-    sp.needsUpdate = true;
-
-    for (const c of life) {
-      const near = Math.abs(c.home.y - camY) < 60;
-      c.obj.visible = near;
-      if (near && c.update && !paused) c.update(time, c.obj, c.home, c.k);
-      if (!c.el) continue;
-      v.set(c.obj.position.x, c.obj.position.y + c.labelY, c.obj.position.z);
-      const dist = v.distanceTo(camera.position);
-      v.project(camera);
-      const px = (v.x + 1) / 2 * innerWidth, py = (1 - v.y) / 2 * innerHeight;
-      // Label sits right of the creature; flip it to the left when the depth gauge is in the way.
-      const w = c.el.offsetWidth, right = labelRight;
-      const flip = px + w > right;
-      const fits = (flip ? px - w > 0 : px > 0) && py > 90 && py < innerHeight - 130;
-      const op = near && v.z < 1 && fits ? clamp(1 - (dist - 18) / 14) : 0;
-      c.el.style.opacity = op.toFixed(2);
-      c.el.style.visibility = op > .05 ? 'visible' : 'hidden';
-      c.el.classList.toggle('flip', flip);
-      if (op > .05) c.el.style.transform = `translate(${flip ? px - w : px}px, ${py}px) translateY(-50%)`;
-    }
-    renderer.render(scene, camera);
-  } };
+  };
 }

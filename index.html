@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#041b26">
-  <meta name="description" content="An interactive descent through the ocean, from sunlit water to the floor of Challenger Deep, meeting the creatures that live at each depth.">
+  <meta name="theme-color" content="#0d2a3a">
+  <meta name="description" content="Scroll 10,935 metres down, from sunlit water to the floor of the Challenger Deep, at true scale. Meet the animals, wrecks and records at every depth.">
+  <meta property="og:title" content="Below the Surface">
+  <meta property="og:description" content="A true-scale descent from the sea surface to the floor of the Challenger Deep.">
   <title>Below the Surface</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23092638%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22%2390d3c9%22/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="preload" href="fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
-  <a class="skip" href="#journey">Skip to the ocean journey</a>
+  <a class="skip" href="#journey">Skip to the descent</a>
   <div id="ocean" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
   <div class="rays" aria-hidden="true"></div>
@@ -18,86 +21,120 @@
   <header class="header">
     <nav aria-label="Main navigation"><button id="guide-open">Field guide</button><button id="motion" aria-pressed="false">Pause motion</button></nav>
   </header>
-  <nav class="sounder" id="sounder" aria-label="Ocean zones"></nav>
+
+  <!-- Everything inside main sits at its real depth: top = depth × pixels-per-metre (see journey.js). -->
   <main id="journey">
-    <section id="surface" class="chapter hero" data-stage="0">
-      <div class="copy">
-        <h1>Below the surface.</h1>
-        <p class="zone"><strong>Sunlight zone</strong>, 0 to 200 m, epipelagic</p>
-        <p class="intro">Sink from sunlit water to the deepest known point on Earth, and meet what lives at every depth on the way.</p>
-        <a class="primary" href="#twilight">Begin the descent <span aria-hidden="true">↓</span></a>
+    <div class="sky" aria-hidden="true"></div>
+    <section id="surface" class="hero">
+      <h1>Below the surface.</h1>
+      <div class="hero-sub">
+        <p class="intro">Sink from sunlit water to the floor of the Challenger Deep, <span data-m="10935">10,935 m</span> down, and meet what lives along the way.</p>
+        <button class="primary" id="hero-descend">Start the descent <span aria-hidden="true">↓</span></button>
       </div>
     </section>
-    <section id="twilight" class="chapter" data-stage="1">
-      <div class="copy">
-        <h2>The last of the light.</h2>
-        <p class="zone"><strong>Twilight zone</strong>, 200 to 1,000 m, mesopelagic</p>
-        <p>Sunlight fades to a dim blue, too weak for plants to grow. Many animals here make their own light, and each night billions of them swim up to feed.</p>
-      </div>
+
+    <p class="note at" style="--d:120">The pressure here is already 13 times what it is at the surface. Every 10 metres adds another atmosphere.</p>
+    <article class="mark at" style="--d:40"><p class="mark-depth" data-m="40">40 m</p><div><h3>Recreational scuba limit</h3><p>Most sport divers are trained to stay above this line.</p></div></article>
+    <article class="mark at" style="--d:214"><p class="mark-depth" data-m="214">214 m</p><div><h3>Deepest freedive</h3><p>Herbert Nitsch, 2007, on a single breath. A weighted sled took him down and a lift bag brought him back.</p></div></article>
+
+    <section id="twilight" class="zone-intro at" style="--d:200">
+      <p class="zone-depth"><span data-m="200">200 m</span></p>
+      <h2>The last of the light.</h2>
+      <p class="zone"><strong>Twilight zone</strong>, mesopelagic, to <span data-m="1000">1,000 m</span></p>
+      <p>Sunlight fades to a dim blue, too weak for plants to grow. Many animals here make their own light, and each night billions of them swim up to feed.</p>
     </section>
-    <section id="midnight" class="chapter" data-stage="2">
-      <div class="copy">
-        <h2>Darkness, with a spark.</h2>
-        <p class="zone"><strong>Midnight zone</strong>, 1,000 to 4,000 m, bathypelagic</p>
-        <p>No sunlight reaches this deep. The only light comes from animals, like the glowing lure an anglerfish dangles to draw prey toward its jaws.</p>
-      </div>
+    <article class="mark at" style="--d:332"><p class="mark-depth" data-m="332">332 m</p><div><h3>Deepest scuba dive</h3><p>Ahmed Gabr, 2014. Getting down took minutes. Decompressing on the way back up took about 14 hours.</p></div></article>
+    <article class="mark at" style="--d:564"><p class="mark-depth" data-m="564">564 m</p><div><h3>Emperor penguin</h3><p>The deepest dive measured for any bird.</p></div></article>
+
+    <section id="midnight" class="zone-intro at" style="--d:1000">
+      <p class="zone-depth"><span data-m="1000">1,000 m</span></p>
+      <h2>Darkness, with a spark.</h2>
+      <p class="zone"><strong>Midnight zone</strong>, bathypelagic, to <span data-m="4000">4,000 m</span></p>
+      <p>No sunlight reaches this deep. From here down, the only light is made by animals, like the glowing lure an anglerfish dangles in front of its jaws.</p>
     </section>
-    <section id="abyss" class="chapter" data-stage="3">
-      <div class="copy">
-        <h2>Cold, dark and crushing.</h2>
-        <p class="zone"><strong>Abyssal zone</strong>, 4,000 to 6,000 m, abyssopelagic</p>
-        <p>The water is near freezing and the pressure is hundreds of times that at the surface. A dumbo octopus glides over the seafloor on ear-like fins.</p>
-      </div>
+    <article class="mark at" style="--d:1280"><p class="mark-depth" data-m="1280">1,280 m</p><div><h3>Leatherback turtle</h3><p>The Guinness record dive for a turtle, logged off Cape Verde in 2006.</p></div></article>
+    <article class="mark at" style="--d:2086"><p class="mark-depth" data-m="2086">2,086 m</p><div><h3>The top of Everest</h3><p>If Mount Everest stood on the floor of the Challenger Deep, its summit would be here, still 2 km under water.</p></div></article>
+    <article class="mark at" style="--d:2992"><p class="mark-depth" data-m="2992">2,992 m</p><div><h3>Deepest mammal dive</h3><p>A Cuvier's beaked whale, tagged off southern California in 2013.</p></div></article>
+    <article class="mark at" style="--d:3682"><p class="mark-depth" data-m="3682">3,682 m</p><div><h3>The average ocean</h3><p>The mean depth of all the world's seas.</p></div></article>
+    <article class="mark at" style="--d:3800"><p class="mark-depth" data-m="3800">3,800 m</p><div><h3>RMS Titanic</h3><p>The wreck has rested here since 1912. It was found in 1985.</p></div></article>
+
+    <section id="abyss" class="zone-intro at" style="--d:4000">
+      <p class="zone-depth"><span data-m="4000">4,000 m</span></p>
+      <h2>Cold, dark and crushing.</h2>
+      <p class="zone"><strong>Abyssal zone</strong>, abyssopelagic, to <span data-m="6000">6,000 m</span></p>
+      <p>The water is near freezing and the pressure is hundreds of times that at the surface. Life here waits for food to fall from above.</p>
     </section>
-    <section id="hadal" class="chapter" data-stage="4">
-      <div class="copy">
-        <h2>Into the trenches.</h2>
-        <p class="zone"><strong>Hadal zone</strong>, 6,000 to 11,000 m, hadopelagic</p>
-        <p>Named after Hades, this zone exists only inside deep ocean trenches. Pale snailfish live in its upper reaches, feeding on small crustaceans.</p>
-      </div>
+    <article class="mark at" style="--d:4790"><p class="mark-depth" data-m="4790">4,790 m</p><div><h3>Bismarck</h3><p>The German battleship sank in 1941. Its wreck was found in 1989.</p></div></article>
+    <p class="note at" style="--d:5720">Abyssal plains, flat fields of fine sediment, cover about half of Earth's surface. Almost none of it has ever been seen.</p>
+
+    <section id="hadal" class="zone-intro at" style="--d:6000">
+      <p class="zone-depth"><span data-m="6000">6,000 m</span></p>
+      <h2>Into the trenches.</h2>
+      <p class="zone"><strong>Hadal zone</strong>, hadopelagic, to the floor</p>
+      <p>Named after Hades, this zone exists only inside deep ocean trenches. The walls close in on both sides.</p>
     </section>
-    <section id="fishlimit" class="chapter" data-stage="5">
-      <div class="copy">
-        <h2>Beyond the fish limit.</h2>
-        <p class="zone"><strong>Hadal zone</strong>, below about 8,200 m</p>
-        <p>No fish can survive much deeper than this. The deepest fish ever filmed, a snailfish, swam at 8,336 m. Below it, amphipods take over.</p>
-      </div>
-    </section>
-    <section id="challenger" class="chapter final" data-stage="6">
-      <div class="copy">
-        <h2>The deepest place we know.</h2>
-        <p class="zone"><strong>Challenger Deep</strong>, about 10,935 m, Mariana Trench</p>
-        <p>The pressure here is more than 1,000 times that at the surface. Amphipods, sea cucumbers and giant single-celled xenophyophores still live on the sediment.</p>
-        <a class="return" href="#surface">Return to the surface <span aria-hidden="true">↑</span></a>
-        <button id="sources-open" class="sources-link">About this site and its sources</button>
+    <article class="mark at" style="--d:6500"><p class="mark-depth" data-m="6500">6,500 m</p><div><h3>Alvin's limit</h3><p>Since its 2022 upgrade, this crewed research sub is rated to dive this deep.</p></div></article>
+    <article class="mark at" style="--d:6865"><p class="mark-depth" data-m="6865">6,865 m</p><div><h3>Deepest known shipwreck</h3><p>USS Samuel B. Roberts, sunk in 1944 and found in 2022.</p></div></article>
+    <article class="mark at" style="--d:8200"><p class="mark-depth" data-m="8200">8,200 m</p><div><h3>The fish limit</h3><p>Around here, fish seem to reach the edge of what their bodies can take. Below it, amphipods take over.</p></div></article>
+    <p class="note at" style="--d:8849">You are now deeper than Mount Everest is tall.</p>
+    <p class="note at" style="--d:10000">About a thousand atmospheres, pressing from every side. Foam cups sent down this far come back shrunk to a fraction of their size.</p>
+
+    <section id="challenger" class="ending">
+      <h2>The deepest place we know.</h2>
+      <p class="zone"><strong>Challenger Deep</strong>, Mariana Trench, about <span data-m="10935">10,935 m</span></p>
+      <p>More people have been to space than to this floor. The first to arrive were Jacques Piccard and Don Walsh, in the bathyscaphe Trieste, in 1960.</p>
+      <div class="ending-actions">
+        <button class="primary" id="ascend">Return to the surface <span aria-hidden="true">↑</span></button>
+        <button id="sources-open" class="text-link">About this site and its sources</button>
       </div>
     </section>
   </main>
+
+  <aside class="gauge" aria-label="Depth gauge">
+    <div class="gauge-track" aria-hidden="true"><span class="gauge-fill"></span><span class="gauge-ticks"></span><span class="gauge-carriage"><span class="gauge-mark"></span></span></div>
+    <ol class="gauge-zones" aria-hidden="true"></ol>
+    <input type="range" id="gauge" min="0" max="10935" step="1" value="0" aria-label="Depth">
+  </aside>
+
   <footer class="instrument-bar">
-    <div class="depth"><span class="instrument-label">Depth</span><div><strong id="depth-number">0</strong><span class="unit">m</span><span class="depth-rule"></span><span id="current-zone">Sunlight zone</span></div></div>
+    <div class="depth">
+      <span class="instrument-label">Depth</span>
+      <div><strong id="depth-number">0</strong><button id="units" class="unit" aria-label="Depth in metres. Switch to feet">m</button><span class="depth-rule"></span><span id="current-zone">Sunlight zone</span></div>
+    </div>
+    <div class="conditions"><span class="instrument-label">Pressure</span><strong><span id="pressure-value">1</span> <small>atm</small></strong></div>
     <div class="conditions"><span class="instrument-label">Sunlight</span><strong id="light-value">Abundant</strong></div>
-    <div class="conditions pressure"><span class="instrument-label">Pressure, approx.</span><strong><span id="pressure-value">1</span> <small>atm</small></strong></div>
-    <button id="sound" aria-pressed="false"><span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sound-label">Sound off</span></button>
+    <div class="controls">
+      <button id="autopilot" aria-pressed="false"><span class="pilot-mark" aria-hidden="true"></span><span id="autopilot-label">Autopilot off</span></button>
+      <button id="sound" aria-pressed="false"><span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sound-label">Sound off</span></button>
+    </div>
   </footer>
+
   <div id="loading" role="status"><span>Preparing the descent</span><span class="loading-track"></span></div>
-  <p id="render-error" hidden>3D is unavailable on this device. You can still read every zone and open the field guide.</p>
-  <dialog id="guide"><div class="dialog-head"><span>Field guide</span><button class="dialog-close" aria-label="Close field guide">×</button></div><div id="guide-content"></div></dialog>
-  <dialog id="sources">
+  <p id="render-error" hidden>3D is unavailable on this device. You can still read every depth and open the field guide.</p>
+
+  <dialog id="guide" aria-labelledby="guide-title">
+    <div class="dialog-head"><span id="guide-title">Field guide</span><button class="dialog-close" aria-label="Close field guide">×</button></div>
+    <div class="guide-body"><nav class="guide-index" aria-label="Animals by zone"></nav><article id="guide-detail"></article></div>
+  </dialog>
+  <dialog id="sources" aria-labelledby="sources-title">
     <div class="dialog-head"><span>About this site</span><button class="dialog-close" aria-label="Close">×</button></div>
-    <h2>A little context.</h2>
-    <p>This is an artistic, educational journey, not a reconstruction of a real dive. Creature shapes and sizes are stylized. Each zone gets about the same amount of scrolling, and the descent slows near featured creatures, so depth does not change at a constant rate.</p>
-    <p>Pressure is estimated at one atmosphere per 10 metres plus surface pressure. The endpoint uses NOAA's approximate depth; measurements of Challenger Deep vary.</p>
-    <p>No sunlight reaches below about 1,000 m. Creatures in these scenes are lit so you can see them. Mariana snailfish appear in the upper hadal zone, not at Challenger Deep.</p>
+    <h2 id="sources-title">A little context.</h2>
+    <p>Every metre of depth gets the same amount of scrolling, so the long, empty stretches really are that long. Animals sit at depths where they are found, though most range much wider. Their shapes and sizes are stylized and not to scale.</p>
+    <p>Pressure is estimated at one atmosphere per 10 metres plus surface pressure. The floor uses NOAA's approximate depth; measurements of the Challenger Deep vary. No sunlight reaches below about 1,000 m, so creatures there are lit for you to see them.</p>
     <h3>Explore the science</h3>
     <ul>
       <li><a href="https://www.noaa.gov/jetstream/ocean/layers-of-ocean" target="_blank" rel="noopener">NOAA: Layers of the ocean</a></li>
       <li><a href="https://oceanservice.noaa.gov/facts/oceandepth.html" target="_blank" rel="noopener">NOAA: How deep is the ocean?</a></li>
       <li><a href="https://oceanexplorer.noaa.gov/ocean-fact/light-distributed/" target="_blank" rel="noopener">NOAA: Light in the ocean</a></li>
+      <li><a href="https://www.guinnessworldrecords.com/news/announcement/deepest-scuba-dive" target="_blank" rel="noopener">Guinness World Records: Deepest scuba dive review</a></li>
+      <li><a href="https://www.guinnessworldrecords.com/world-records/deepest-shipwreck" target="_blank" rel="noopener">Guinness World Records: Deepest shipwreck</a></li>
+      <li><a href="https://www.nhm.ac.uk/discover/secrets-of-deep-diving-whales.html" target="_blank" rel="noopener">Natural History Museum: Deep-diving whales</a></li>
+      <li><a href="https://www.livescience.com/worlds-deepest-octopus.html" target="_blank" rel="noopener">Live Science: The deepest octopus</a></li>
+      <li><a href="https://www.whoi.edu/press-room/news-release/human-occupied-submersible-alvin-makes-historic-dive" target="_blank" rel="noopener">WHOI: Alvin's record dive</a></li>
       <li><a href="https://www.mbari.org/animal/deep-sea-anglerfish/" target="_blank" rel="noopener">MBARI: Deep-sea anglerfish</a></li>
-      <li><a href="https://www.nhm.ac.uk/discover/what-is-a-dumbo-octopus.html" target="_blank" rel="noopener">Natural History Museum: Dumbo octopus</a></li>
     </ul>
-    <p class="fine">Built with Three.js. All creatures are original procedural 3D illustrations. Type is Bricolage Grotesque.</p>
+    <p class="fine">Built with Three.js. All creatures are original procedural 3D illustrations. Type is Bricolage Grotesque. Inspired by Neal Agarwal's The Deep Sea.</p>
   </dialog>
-  <script type="module" src="app.js?v=3"></script>
+  <script type="module" src="app.js?v=4"></script>
 </body>
 </html>

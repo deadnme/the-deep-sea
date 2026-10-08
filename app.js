@@ -1,84 +1,206 @@
-import { stages, creatures, sampleJourney, stops, depthToS } from './journey.js?v=3';
+import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=4';
 
-const $ = (selector) => document.querySelector(selector);
-const chapters = [...document.querySelectorAll('.chapter')];
+const $ = selector => document.querySelector(selector);
+const root = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-let tops = [], maxScroll = 1, motionPaused = reduced.matches, ocean = null, lastIndex = -1;
-function measure() { tops = chapters.map(el => el.offsetTop); maxScroll = document.documentElement.scrollHeight - innerHeight; }
-measure();
-new ResizeObserver(measure).observe(document.body);
-// Depth sounder: one line from surface to floor. Zone marks sit where each zone's scroll begins
-// (Challenger Deep sits at the floor), ticks mark featured creatures, the carriage follows the dive.
-const sounder = $('#sounder');
-const at = s => `${(s / stages.length * 100).toFixed(3)}%`;
-const zoneName = { surface: 'Sunlight', twilight: 'Twilight', midnight: 'Midnight', abyss: 'Abyssal', hadal: 'Hadal', fishlimit: 'Fish limit', challenger: 'Challenger Deep' };
-sounder.innerHTML = `<div class="sounder-track" aria-hidden="true"><span class="sounder-fill"></span><span class="sounder-carriage"><span class="sounder-mark"></span></span><span class="sounder-ticks">${stops.map(([, d]) => `<i style="top:${at(depthToS(d))}"></i>`).join('')}</span></div>`
-  + `<ol>${stages.map((s, i) => { const last = i === stages.length - 1, depth = last ? s.end : s.start;
-    return `<li style="top:${at(last ? stages.length : i)}"><a href="#${s.id}" aria-label="${zoneName[s.id]}, ${depth.toLocaleString('en-US')} m"><span class="sz-name">${zoneName[s.id]}</span><span class="sz-depth">${depth.toLocaleString('en-US')} m</span></a></li>`; }).join('')}</ol>`;
-const links = [...sounder.querySelectorAll('a')];
-function paint() {
-  const sample = sampleJourney(scrollY, tops, maxScroll);
-  $('#depth-number').textContent = sample.depth.toLocaleString('en-US');
-  $('#pressure-value').textContent = Math.round(1 + sample.depth / 10).toLocaleString('en-US');
-  if (sample.index !== lastIndex) {
-    const stage = stages[sample.index];
-    $('#current-zone').textContent = stage.name;
-    $('#light-value').textContent = stage.light;
-    links.forEach((link, i) => link.setAttribute('aria-current', String(i === sample.index)));
-    lastIndex = sample.index;
+let motionPaused = reduced.matches, ocean = null;
+
+// ---------- one scale for page and scene ----------
+// ponytail: the height is only re-read when the width changes, so a mobile URL bar showing or hiding
+// never re-scales an 80,000 px page under the reader. Rotating or resizing the width re-measures.
+let view, viewH = 0, lastW = 0;
+const depthToScroll = d => d * view.ppm + view.half - innerHeight / 2;
+const depthNow = () => Math.min(FLOOR, Math.max(0, (scrollY + innerHeight / 2 - view.half) / view.ppm));
+function measure() {
+  if (innerWidth !== lastW) {
+    const keep = view ? depthNow() : 0;
+    lastW = innerWidth; viewH = innerHeight; view = layout(innerWidth, viewH);
+    root.style.setProperty('--ppm', view.ppm);
+    root.style.setProperty('--half', `${view.half}px`);
+    if (keep) scrollTo({ top: depthToScroll(keep), behavior: 'instant' });
+    renderGaugeZones();
   }
-  $('.rays').style.opacity = Math.max(0, .3 * (1 - (sample.index + sample.progress) / 1.8));
-  sounder.style.setProperty('--p', (sample.s / stages.length).toFixed(4));
-  ocean?.update(sample, motionPaused);
+  ocean?.resize(view, viewH);
+}
+addEventListener('resize', measure);
+
+// ---------- units ----------
+let units = 'm';
+try { if (localStorage.getItem('units') === 'ft') units = 'ft'; } catch {}
+const inUnits = m => Math.round(units === 'ft' ? m * 3.28084 : m);
+const fmt = m => `${inUnits(m).toLocaleString('en-US')} ${units}`;
+function applyUnits(scope = document) {
+  scope.querySelectorAll('[data-m]').forEach(el => { el.textContent = fmt(+el.dataset.m); });
+}
+function showUnits() {
+  $('#units').textContent = units;
+  $('#units').setAttribute('aria-label', units === 'm' ? 'Depth in metres. Switch to feet' : 'Depth in feet. Switch to metres');
+  applyUnits(); renderGaugeZones(); lastShown = -1;
+}
+$('#units').onclick = () => {
+  units = units === 'm' ? 'ft' : 'm';
+  try { localStorage.setItem('units', units); } catch {}
+  showUnits();
+};
+
+// ---------- depth gauge ----------
+const gauge = $('#gauge'), gaugeEl = $('.gauge'), zoneList = $('.gauge-zones');
+gaugeEl.querySelector('.gauge-ticks').innerHTML = creatures.filter(c => c.name && c.depth < FLOOR)
+  .map(c => `<i style="top:${(c.depth / FLOOR * 100).toFixed(3)}%"></i>`).join('');
+function renderGaugeZones() {
+  // Labels sit at their true depth. The twilight band is only a few pixels tall at this scale,
+  // so a label that would collide with the one above it is left out (its band and ticks remain).
+  const h = gaugeEl.clientHeight; let prev = -Infinity;
+  zoneList.innerHTML = [...zones.map(z => [z.name.replace(' zone', ''), z.start, z.id]), ['Challenger Deep', FLOOR, 'challenger']].map(([name, d, id]) => {
+    const top = d / FLOOR * h;
+    if (top - prev < 36) return '';
+    prev = top;
+    return `<li data-zone="${id}" style="top:${top}px"><b>${name}</b><small>${fmt(d)}</small></li>`;
+  }).join('');
+  lastZone = null;
+}
+gauge.addEventListener('input', () => { stop(); scrollTo({ top: depthToScroll(+gauge.value), behavior: 'instant' }); });
+// Native steps are 1 m, far too fine for 10,935 m: arrows move 100 m, Page keys 1,000 m.
+const STEP = { ArrowDown: 100, ArrowRight: 100, ArrowUp: -100, ArrowLeft: -100, PageDown: 1000, PageUp: -1000 };
+gauge.addEventListener('keydown', e => {
+  if (!(e.key in STEP)) return;
+  e.preventDefault(); stop();
+  scrollTo({ top: depthToScroll(Math.min(FLOOR, Math.max(0, depthNow() + STEP[e.key]))), behavior: 'instant' });
+});
+
+// ---------- glide (gauge, guide, ascend) and autopilot ----------
+let glide = null, auto = false, autoY = 0;
+function glideTo(depth) {
+  setAuto(false);
+  const to = depthToScroll(Math.min(FLOOR, Math.max(0, depth)));
+  if (reduced.matches) { scrollTo({ top: to, behavior: 'instant' }); return; }
+  glide = { from: scrollY, to, start: performance.now(), dur: Math.min(6000, 700 + Math.abs(to - scrollY) / 15) };
+}
+function setAuto(on) {
+  auto = on; autoY = scrollY;
+  $('#autopilot').setAttribute('aria-pressed', String(on));
+  $('#autopilot-label').textContent = on ? 'Autopilot on' : 'Autopilot off';
+}
+const stop = () => { glide = null; if (auto) setAuto(false); };
+addEventListener('wheel', stop, { passive: true });
+// Controls are exempt, or tapping Autopilot would stop it and then its click would start it again.
+const onControl = e => e.target.closest?.('button, input, a, dialog');
+addEventListener('touchstart', e => { if (!onControl(e)) stop(); }, { passive: true });
+addEventListener('keydown', e => { if (!onControl(e) && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(e.key)) stop(); });
+$('#autopilot').onclick = () => { glide = null; setAuto(!auto); };
+$('#hero-descend').onclick = () => { glide = null; setAuto(true); };
+$('#ascend').onclick = () => glideTo(0);
+const AUTO_SPEED = 32;   // metres per second: the whole descent in under six minutes
+
+// ---------- frame loop ----------
+let lastShown = -1, lastZone = null, lastFrame = performance.now(), lastSoundDepth = -1;
+function paint(now) {
+  const dt = Math.min((now - lastFrame) / 1000, .1); lastFrame = now;
+  if (glide) {
+    const t = Math.min(1, (now - glide.start) / glide.dur), e = t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
+    scrollTo({ top: glide.from + (glide.to - glide.from) * e, behavior: 'instant' });
+    if (t === 1) glide = null;
+  } else if (auto) {
+    if (Math.abs(scrollY - autoY) > 4) autoY = scrollY;   // the reader dragged the scrollbar
+    autoY += AUTO_SPEED * view.ppm * dt;
+    scrollTo({ top: autoY, behavior: 'instant' });
+    if (depthNow() >= FLOOR - .5) setAuto(false);
+  }
+  const depth = depthNow(), shown = Math.round(depth), zone = zoneAt(depth);
+  if (shown !== lastShown) {
+    $('#depth-number').textContent = inUnits(shown).toLocaleString('en-US');
+    $('#pressure-value').textContent = Math.round(1 + depth / 10).toLocaleString('en-US');
+    gauge.value = shown;
+    gauge.setAttribute('aria-valuetext', `${fmt(shown)}, ${zone.name}`);
+    lastShown = shown;
+  }
+  if (zone !== lastZone) {
+    $('#current-zone').textContent = zone.name;
+    $('#light-value').textContent = zone.light;
+    zoneList.querySelectorAll('li').forEach(li => li.classList.toggle('now', li.dataset.zone === zone.id));
+    lastZone = zone;
+  }
+  if (Math.abs(depth - lastSoundDepth) > 20) { setSoundDepth(depth); lastSoundDepth = depth; }
+  $('.rays').style.opacity = Math.max(0, .3 * (1 - depth / 220)).toFixed(3);
+  gaugeEl.style.setProperty('--p', (depth / FLOOR).toFixed(5));
+  ocean?.update(depth, motionPaused);
   requestAnimationFrame(paint);
 }
-requestAnimationFrame(paint);
+
 function updateMotionButton() { $('#motion').setAttribute('aria-pressed', String(motionPaused)); $('#motion').textContent = motionPaused ? 'Resume motion' : 'Pause motion'; }
-updateMotionButton();
 $('#motion').onclick = () => { motionPaused = !motionPaused; updateMotionButton(); };
 reduced.addEventListener('change', event => { motionPaused = event.matches; updateMotionButton(); });
 
-let selected = 'manta';
+// ---------- field guide ----------
+const known = creatures.filter(c => c.name), byId = Object.fromEntries(known.map(c => [c.id, c]));
+$('.guide-index').innerHTML = zones.map(z => {
+  const list = known.filter(c => zoneAt(c.depth) === z);
+  return `<h3>${z.name}</h3><ul>${list.map(c => `<li><button data-select="${c.id}"><span>${c.name}</span><small data-m="${c.depth}"></small></button></li>`).join('')}</ul>`;
+}).join('');
+let selected = known[0].id;
 function showCreature(id, open = true) {
   selected = id;
-  const c = creatures[id];
-  $('#guide-content').innerHTML = `<div class="guide-tabs" role="group" aria-label="Choose a creature">${Object.entries(creatures).map(([key, value]) => `<button data-select="${key}" aria-pressed="${key === id}">${value.name}</button>`).join('')}</div><p class="guide-depth">${c.habitat}</p><h2>${c.name}</h2><p><i>${c.latin}</i></p><h3>${c.note}</h3><p>${c.text}</p><p class="guide-fact">${c.fact}</p><a class="guide-source" href="${c.source}" target="_blank" rel="noopener">Read more about this creature</a>`;
-  $('#guide-content').querySelectorAll('[data-select]').forEach(button => button.onclick = () => { showCreature(button.dataset.select, false); $('#guide-content').querySelector(`[data-select="${selected}"]`).focus(); });
-  if (open) $('#guide').showModal();
+  const c = byId[id], detail = $('#guide-detail');
+  detail.innerHTML = `<p class="guide-depth">Shown at <span data-m="${c.depth}"></span></p><h2>${c.name}</h2><p class="guide-latin">${c.latin}</p>`
+    + `<p class="guide-fact">${c.fact}</p><p class="guide-range">${c.range}</p>`
+    + `<div class="guide-actions"><button class="primary" data-go="${c.depth}">Go to this depth</button>${c.source ? `<a href="${c.source}" target="_blank" rel="noopener">Read more about it</a>` : ''}</div>`;
+  applyUnits(detail);
+  $('.guide-index').querySelectorAll('[data-select]').forEach(b => b.setAttribute('aria-current', String(b.dataset.select === id)));
+  if (open && !$('#guide').open) {
+    $('#guide').showModal();
+    $('.guide-index').querySelector(`[data-select="${id}"]`).scrollIntoView({ block: 'nearest' });
+  }
 }
 $('#guide-open').onclick = () => showCreature(selected);
-// Creature labels are created by ocean.js and move every frame, so listen on the document.
-document.addEventListener('click', event => { const label = event.target.closest('[data-creature]'); if (label) showCreature(label.dataset.creature); });
+document.addEventListener('click', event => {
+  const t = event.target;
+  const label = t.closest('[data-creature]'); if (label) return showCreature(label.dataset.creature);
+  const pick = t.closest('[data-select]'); if (pick) return showCreature(pick.dataset.select, false);
+  const go = t.closest('[data-go]'); if (go) { $('#guide').close(); glideTo(+go.dataset.go); }
+});
 $('#sources-open').onclick = () => $('#sources').showModal();
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelector('.dialog-close').onclick = () => dialog.close();
-  dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
+  dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
 });
 
-let audioContext, gain, soundOn = false;
+// ---------- sound: brown-noise water and a low drone, both darkening with depth ----------
+let audioContext, gain, filter, drone, soundOn = false;
+function setSoundDepth(depth) {
+  if (!soundOn) return;
+  filter.frequency.setTargetAtTime(260 - 170 * Math.min(1, depth / 4000), audioContext.currentTime, .4);
+  drone.frequency.setTargetAtTime(55 - 14 * depth / FLOOR, audioContext.currentTime, .4);
+}
 $('#sound').onclick = async () => {
   try {
     if (!audioContext) {
       audioContext = new AudioContext();
       gain = audioContext.createGain(); gain.gain.value = 0;
-      const filter = audioContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 260;
+      filter = audioContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 260;
       const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 4, audioContext.sampleRate);
       const channel = buffer.getChannelData(0);
       let brown = 0; for (let i = 0; i < channel.length; i++) { brown = (brown + (Math.random() * 2 - 1) * .02) / 1.02; channel[i] = brown * 3.5; }
       const noise = audioContext.createBufferSource(); noise.buffer = buffer; noise.loop = true; noise.connect(filter); filter.connect(gain); gain.connect(audioContext.destination); noise.start();
-      const drone = audioContext.createOscillator(); drone.frequency.value = 55;
+      drone = audioContext.createOscillator(); drone.frequency.value = 55;
       const droneGain = audioContext.createGain(); droneGain.gain.value = .025; drone.connect(droneGain); droneGain.connect(gain); drone.start();
     }
     await audioContext.resume(); soundOn = !soundOn;
     gain.gain.setTargetAtTime(soundOn ? .3 : 0, audioContext.currentTime, .5);
+    setSoundDepth(depthNow());
     $('#sound').setAttribute('aria-pressed', String(soundOn)); $('#sound-label').textContent = soundOn ? 'Sound on' : 'Sound off';
   } catch { $('#sound-label').textContent = 'Sound unavailable'; $('#sound').disabled = true; }
 };
 document.addEventListener('visibilitychange', () => { if (audioContext) document.hidden ? audioContext.suspend() : soundOn && audioContext.resume(); });
 
+// ---------- start ----------
+measure();
+showUnits();
+updateMotionButton();
+requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=3');
+  const { createOcean } = await import('./ocean.js?v=4');
   ocean = createOcean($('#ocean'));
+  ocean.resize(view, viewH);
 } catch (error) {
   console.error('Ocean renderer unavailable:', error);
   $('#render-error').hidden = false;
