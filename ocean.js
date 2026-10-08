@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=5';
+import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=6';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);
@@ -456,6 +456,146 @@ const B = {
       worms.forEach((w, i) => { w.rotation.z = w.userData.tilt[1] + Math.sin(t * .9 + i) * .06; w.rotation.x = w.userData.tilt[0] + Math.cos(t * .7 + i) * .05; });
     }];
   },
+  // The bow of RMS Titanic as it lies at 3,800 m: sunk in the sediment, the foremast fallen back
+  // over the bridge, the hull furred with algae. Bow towards +x.
+  titanic() {
+    const g = new THREE.Group(), L = 16, B = 2.4, H = 3.4;
+    // One surface for the hull and everything fixed to it. u: break (0) to stem (1),
+    // v: keel (0) to deck (1), s: port (-1) to starboard (1).
+    const beam = u => Math.min(1, (1 - u) / .45) ** .85;
+    const hull = (u, v, s) => [(u - .5) * L, (v - .5) * H + v * u ** 3 * 1.3, s * B / 2 * beam(u) * (.68 + .32 * v)];
+    const coat = std('#ffffff', { vertexColors: true, roughness: .95, side: THREE.DoubleSide });
+    const C = ['#3a2a21', '#6e3a20', '#2c4024', '#5a7536'].map(c => new THREE.Color(c)), moss = new THREE.Color(), c = new THREE.Color();
+    // Rust runs down the plates; algae is thickest on anything facing up.
+    const crust = geo => {
+      geo.computeVertexNormals();
+      const p = geo.attributes.position, n = geo.attributes.normal, col = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+        const rust = smoothstep(.3, 1.1, noise(x * 1.9 + z * .7, y * .25, z * 1.7) + noise(x * 5.3, y * .6, 3) * .35);
+        const growth = clamp(.2 + n.getY(i) * .45 + y * .08 + noise(x * 2.3, y * 3.1, z * 2.3) * .3);
+        moss.lerpColors(C[2], C[3], clamp(.5 + noise(x * 4.1, y * 3.7, z * 4.1) * .45));
+        c.lerpColors(C[0], C[1], rust * .6).lerp(moss, growth).toArray(col, i * 3);
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return new THREE.Mesh(geo, coat);
+    };
+    const block = (w, h, d, x, y, z) => g.add(crust(new THREE.BoxGeometry(w, h, d, Math.ceil(w * 3), Math.ceil(h * 3), Math.ceil(d * 3)).translate(x, y, z)));
+
+    // Hull: a box bent onto that surface and torn open at the break.
+    const geo = new THREE.BoxGeometry(L, H, B, 96, 14, 8), p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const u = p.getX(i) / L + .5, v = p.getY(i) / H + .5, s = p.getZ(i) / (B / 2), [x, y, z] = hull(u, v, s);
+      p.setXYZ(i, u < .001 ? x + noise(v * 7, s * 3, 1) * .5 - .3 : x, y, z);
+    }
+    g.add(crust(geo));
+
+    // A bed of mud piled up the hull and ploughed up at the stem. It fades out at the edges,
+    // like seabed caught in a lamp, since there is no floor at this depth anywhere else.
+    const mudY = (x, z) => -.5 - 2.2 * ((x / 18) ** 2 + (z / 9) ** 2) + .9 * Math.exp(-((x - 8.4) ** 2 / 2.5 + z * z / 3)) + noise(x * .5, 2, z * .5) * .12;
+    {
+      const geo = new THREE.PlaneGeometry(36, 22, 72, 44).rotateX(-Math.PI / 2), p = geo.attributes.position, col = new Float32Array(p.count * 4);
+      const a = new THREE.Color('#4b4436'), b = new THREE.Color('#665d4a');
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), z = p.getZ(i);
+        p.setY(i, mudY(x, z));
+        c.lerpColors(a, b, clamp(.5 + noise(x * 1.1, 5, z * 1.1) * .4)).toArray(col, i * 4);
+        col[i * 4 + 3] = 1 - smoothstep(.55, 1, Math.hypot(x / 18, z / 11));
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 4)); geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, std('#ffffff', { vertexColors: true, transparent: true, roughness: 1 })));
+    }
+    for (let i = 0; i < 6; i++) {   // torn plates beyond the break
+      const plate = crust(new THREE.BoxGeometry(.6 + Math.random() * .8, .06, .4 + Math.random() * .5, 4, 1, 3));
+      const x = -L / 2 - .5 - Math.random() * 2.5, z = (Math.random() - .5) * 3.5;
+      plate.position.set(x, mudY(x, z) + .05, z);
+      plate.rotation.set((Math.random() - .5) * .5, Math.random() * 3, (Math.random() - .5) * .5); g.add(plate);
+    }
+
+    // Superstructure, the first funnel's empty casing, deck fittings and the fallen foremast.
+    const deck = 1.7;
+    block(7.8, .9, B * .86, -3.7, deck + .4, 0);
+    block(6.2, .7, 1.5, -3.7, deck + 1.2, 0);
+    const casing = crust(new THREE.CylinderGeometry(.42, .46, .5, 20, 2, true)); casing.scale.z = .7; casing.position.set(-1.6, deck + 1.75, 0); g.add(casing);
+    const pit = new THREE.Mesh(new THREE.CircleGeometry(.4, 20), std('#080605')); pit.rotation.x = -Math.PI / 2; pit.scale.y = .7; pit.position.set(-1.6, deck + 1.6, 0); g.add(pit);
+    for (const s of [1, -1]) { const [x, y, z] = hull(.9, 1, s * .4); g.add(crust(new THREE.CylinderGeometry(.14, .16, .22, 12).translate(x, y + .1, z))); }
+    { const [x, y] = hull(.66, 1, 0); block(.8, .2, .9, x, y + .08, 0); }
+    const [mx, my] = hull(.74, 1, 0);
+    g.add(crust(pipe([[mx, my, 0], [mx - 2.4, my + 1.1, .2], [-.4, deck + 1.6, .4]], .09, coat).geometry));
+
+    // The railing at the bow, where the two sides meet at the stem.
+    for (const s of [1, -1]) {
+      const rail = [];
+      for (let u = .8; u < 1; u += .025) {
+        const [x, y, z] = hull(u, 1, s * .95); rail.push([x, y + .3, z]);
+        g.add(crust(new THREE.CylinderGeometry(.018, .018, .3, 4).translate(x, y + .15, z)));
+      }
+      rail.push(hull(.999, 1, 0).map((q, i) => i === 1 ? q + .3 : q));
+      g.add(crust(pipe(rail, .025, coat).geometry));
+    }
+
+    // Portholes and windows, then patches of algae, all instanced.
+    const d = new THREE.Object3D();
+    const holes = new THREE.InstancedMesh(new THREE.SphereGeometry(.07, 8, 6), std('#0b0807', { roughness: .4 }), 300);
+    let n = 0;
+    const hole = (x, y, z, w = 1, h = 1) => { d.position.set(x, y, z); d.rotation.set(0, 0, 0); d.scale.set(w, h, .5); d.updateMatrix(); holes.setMatrixAt(n++, d.matrix); };
+    for (const s of [1, -1]) {
+      for (const v of [.82, .68]) for (let u = .06; u < .9; u += .02) { const [x, y, z] = hull(u, v, s); hole(x, y, z + s * .005); }
+      for (let x = -7.4; x < 0; x += .3) hole(x, deck + .45, s * 1.04, 1.4, .8);
+      for (let x = -6.5; x < -.8; x += .3) hole(x, deck + 1.25, s * .76, 1.4, .8);
+    }
+    holes.count = n; g.add(holes);
+
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const brown = new THREE.Color('#5b5a2e');
+    const tint = () => c.lerpColors(C[2], C[3], Math.random()).lerp(brown, Math.random() * .4);
+    const blob = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), std('#ffffff', { roughness: 1, flatShading: true }), 160);
+    for (let i = 0; i < 160; i++) {
+      if (i < 120) { const [x, y, z] = hull(rnd(.02, .9), 1, rnd(-.7, .7)); d.position.set(x, y + .02, z); d.scale.set(rnd(.2, .55), rnd(.04, .1), rnd(.2, .55)); }
+      else if (i < 145) { d.position.set(rnd(-7.5, .1), deck + .86, rnd(-.95, .95)); d.scale.set(rnd(.2, .45), rnd(.04, .1), rnd(.2, .45)); }
+      else { d.position.set(rnd(-6.6, -.8), deck + 1.56, rnd(-.7, .7)); d.scale.set(rnd(.2, .4), rnd(.04, .1), rnd(.2, .4)); }
+      d.rotation.set(0, rnd(0, TAU), 0); d.updateMatrix(); blob.setMatrixAt(i, d.matrix); blob.setColorAt(i, tint());
+    }
+    g.add(blob);
+
+    // Strands hanging from every edge, swaying in the current.
+    const strandGeo = new THREE.ConeGeometry(.045, 1, 4); strandGeo.rotateX(Math.PI); strandGeo.translate(0, -.5, 0);
+    const strands = [];
+    for (let i = 0; i < 240; i++) {
+      const s = i % 2 ? 1 : -1;
+      let x, y, z, len = rnd(.25, 1.5);
+      if (i < 130) { [x, y, z] = hull(rnd(.02, .99), 1, s); z += s * .03; }
+      else if (i < 180) { x = rnd(-7.6, .1); y = deck + .84; z = s * 1.06; }
+      else if (i < 210) { x = rnd(-6.7, -.7); y = deck + 1.54; z = s * .78; }
+      else { [x, y, z] = hull(rnd(.06, .9), Math.random() < .5 ? .8 : .66, s); z += s * .02; len = rnd(.15, .45); }
+      strands.push([x, y, z, rnd(.6, 1.4), len, rnd(0, TAU), s]);
+    }
+    const hang = new THREE.InstancedMesh(strandGeo, std('#ffffff', { roughness: .9 }), strands.length);
+    strands.forEach((_, i) => hang.setColorAt(i, tint()));
+    g.add(hang);
+
+    // Ribbons of weed rising from the decks.
+    const weedMat = std('#5f803a', { roughness: .8 }), weeds = [];
+    for (let i = 0; i < 12; i++) {
+      const [x, y, z] = i % 2 ? hull(rnd(.56, .95), 1, rnd(-.6, .6)) : [rnd(-6.5, -1), deck + 1.55, rnd(-.6, .6)], h = rnd(1, 2.4);
+      const w = at(new THREE.Group(), x, y, z);
+      w.add(pipe([[0, 0, 0], [.12, h * .35, .05], [-.1, h * .7, -.05], [.05, h, 0]], .035, weedMat));
+      g.add(w); weeds.push(w);
+    }
+
+    const sway = t => {
+      strands.forEach(([x, y, z, w, l, ph, s], i) => {
+        d.position.set(x, y, z); d.rotation.set(-s * (.06 + Math.sin(t * .5 + ph) * .05), 0, Math.sin(t * .7 + ph) * .14); d.scale.set(w, l, w);
+        d.updateMatrix(); hang.setMatrixAt(i, d.matrix);
+      });
+      hang.instanceMatrix.needsUpdate = true;
+      weeds.forEach((w, i) => { w.rotation.z = Math.sin(t * .6 + i) * .12; w.rotation.x = Math.cos(t * .5 + i) * .08; });
+    };
+    sway(0);
+    // Below eye level and tipped towards the camera, so the decks and the bow railing show.
+    const wreck = new THREE.Group(); g.position.y = -3.2; wreck.add(g); wreck.rotation.x = .3;
+    return [wreck, sway];
+  },
   gulper() {
     const g = new THREE.Group(), m = std('#151012', { roughness: .6 });
     const pts = []; for (let i = 0; i <= 20; i++) pts.push([-i * .45, Math.sin(i * .5) * .5, Math.cos(i * .35) * .3]);
@@ -539,6 +679,7 @@ const MODELS = {
   vent: () => B.vent(),
   beaked: () => B.beaked(),
   fangtooth: () => B.fangtooth(),
+  titanic: () => B.titanic(),
   dumbo: (s = .5) => wrap(dumbo, s, .35),
   tripod: () => B.tripod(),
   seaPig: () => B.seaPig(),
@@ -624,7 +765,8 @@ export function createOcean(container) {
   }
 
   // ---------- marine snow ----------
-  const SNOW = 1800, BOX = 44;
+  // Only the first `flakes` points are drawn; that number grows with depth (see update).
+  const SNOW = 8000, BOX = 44;
   const snowPos = new Float32Array(SNOW * 3);
   for (let i = 0; i < SNOW; i++) snowPos.set([(Math.random() - .5) * 70, (Math.random() - .5) * BOX, -Math.random() * 50 + 4], i * 3);
   const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
@@ -684,8 +826,11 @@ export function createOcean(container) {
       lamp.intensity = smoothstep(150, 1400, depth) * 2.2;
       snowMat.opacity = .2 + smoothstep(100, 1500, depth) * .45;
 
+      // Sparse flakes at the surface, steadily more (and bigger) all the way to the trench floor.
+      const deep = Math.min(1, depth / 9000) ** .8, flakes = Math.round(SNOW * (.12 + .88 * deep));
+      snowGeo.setDrawRange(0, flakes); snowMat.size = .12 + deep * .08;
       const camY = camera.position.y, sp = snowGeo.attributes.position;
-      for (let i = 0; i < SNOW; i++) {
+      for (let i = 0; i < flakes; i++) {
         let y = sp.getY(i) - dt * .25;
         y = camY + ((((y - camY) + BOX / 2) % BOX) + BOX) % BOX - BOX / 2;
         sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(time * .3 + i) * dt * .05);

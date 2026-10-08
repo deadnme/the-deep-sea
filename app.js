@@ -1,4 +1,4 @@
-import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=5';
+import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=6';
 
 const $ = selector => document.querySelector(selector);
 const root = document.documentElement;
@@ -200,7 +200,7 @@ showUnits();
 updateMotionButton();
 requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=5');
+  const { createOcean } = await import('./ocean.js?v=6');
   ocean = createOcean($('#ocean'));
   ocean.resize(view, viewH);
 } catch (error) {
