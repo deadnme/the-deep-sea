@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=7';
+import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=8';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);

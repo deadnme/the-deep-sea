@@ -21,7 +21,7 @@ About 35 animals sit at depths where they are found, from green sea turtles to h
 label that follows it and opens the field guide. Between them are human landmarks and records: the deepest
 freedive and scuba dive, the Titanic and the Bismarck, Alvin's limit, the deepest known wreck, and the fish limit.
 
-- The instrument bar shows depth (metres or feet), pressure and sunlight. Autopilot sinks at 32 m/s.
+- The instrument bar shows depth (metres or feet), pressure and sunlight. Autopilot sinks at 32 m/s and fast-forwards through empty water.
 - The depth gauge on the right is a slider: click, drag, or use the arrow and Page keys to jump.
 - Sound is opt-in, synthesized locally, and darkens with depth.
 - Pause motion stops all animation, and reduced-motion preferences are respected.

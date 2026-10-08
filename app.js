@@ -1,4 +1,4 @@
-import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=7';
+import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=8';
 
 const $ = selector => document.querySelector(selector);
 const root = document.documentElement;
@@ -93,6 +93,25 @@ $('#autopilot').onclick = () => { glide = null; setAuto(!auto); };
 $('#hero-descend').onclick = () => { glide = null; setAuto(true); };
 $('#ascend').onclick = () => glideTo(0);
 const AUTO_SPEED = 32;   // metres per second: the whole descent in under six minutes
+// Through empty water autopilot fast-forwards: 1× faster per RAMP metres of clear water, up to FAST×.
+const RAMP = 30, FAST = 12;
+// Everything worth slowing down for, as [depth, scale]. Only the z = -15 plane scrolls with the page;
+// creatures further back stay on screen over a wider depth range, so their reach scales with distance.
+const sights = [[0, 1], ...creatures.map(c => [c.depth, Math.max(1, -c.z / 15)]),
+  ...[...document.querySelectorAll('main .at')].map(el => [+el.style.getPropertyValue('--d'), 1])];
+// Autopilot speed at this depth, the clear water around the view, and the view depth at which
+// the next sight below comes on screen.
+function autopilot(depth) {
+  const half = innerHeight / 2 / view.ppm;
+  let clear = Infinity, next = FLOOR;
+  for (const [d, scale] of sights) {
+    const reach = half * scale + 20;   // the margin covers model and text height
+    clear = Math.min(clear, Math.abs(d - depth) - reach);
+    if (d - reach > depth) next = Math.min(next, d - reach);
+  }
+  clear = Math.max(0, clear);
+  return [AUTO_SPEED * Math.min(FAST, 1 + clear / RAMP), clear, next];
+}
 
 // ---------- frame loop ----------
 let lastShown = -1, lastZone = null, lastFrame = performance.now(), lastSoundDepth = -1;
@@ -104,7 +123,10 @@ function paint(now) {
     if (t === 1) glide = null;
   } else if (auto) {
     if (Math.abs(scrollY - autoY) > 4) autoY = scrollY;   // the reader dragged the scrollbar
-    autoY += AUTO_SPEED * view.ppm * dt;
+    const [speed, clear, next] = autopilot(depthNow());
+    // Reduced motion: cut across empty water. (> 1 m, so scroll rounding after a cut can't trigger another.)
+    if (reduced.matches && clear > 1) autoY = depthToScroll(next);
+    else autoY += speed * view.ppm * dt;
     jump(autoY);
     if (depthNow() >= FLOOR - .5) setAuto(false);
   }
@@ -200,7 +222,7 @@ showUnits();
 updateMotionButton();
 requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=7');
+  const { createOcean } = await import('./ocean.js?v=8');
   ocean = createOcean($('#ocean'));
   ocean.resize(view, viewH);
 } catch (error) {
