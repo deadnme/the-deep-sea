@@ -10,7 +10,7 @@
   <title>Below the Surface</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23092638%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22%2390d3c9%22/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <a class="skip" href="#journey">Skip to the descent</a>
@@ -84,6 +84,15 @@
       <h2>The deepest place we know.</h2>
       <p class="zone"><strong>Challenger Deep</strong>, Mariana Trench, about <span data-m="10935">10,935 m</span></p>
       <p>More people have been to space than to this floor. The first to arrive were Jacques Piccard and Don Walsh, in the bathyscaphe Trieste, in 1960.</p>
+      <div class="known">
+        <h3>How much of the seafloor we have explored, as of 2026</h3>
+        <p class="known-row"><span>Mapped in detail</span><strong>28.7%</strong></p>
+        <div class="known-bar" style="--v:.287" aria-hidden="true"><i></i></div>
+        <p class="known-row"><span>Ever seen, by people or their cameras</span><strong>less than 0.001%</strong></p>
+        <div class="known-bar" style="--v:.00001" aria-hidden="true"><i></i></div>
+        <p class="known-scale" aria-hidden="true"><span>0%</span><span>100%</span></p>
+        <p class="known-source">Mapping from <a href="https://seabed2030.org/2026/04/20/global-seabed-mapping-reaches-new-milestone-as-five-million-square-kilometres-added-in-a-year/" target="_blank" rel="noopener">Seabed 2030</a>, April 2026. Sightings of the seafloor below 200 m from a <a href="https://www.science.org/doi/10.1126/sciadv.adp8602" target="_blank" rel="noopener">2025 study</a> of more than 43,000 dives.</p>
+      </div>
       <div class="ending-actions">
         <button class="primary" id="ascend">Return to the surface <span aria-hidden="true">↑</span></button>
         <button id="sources-open" class="text-link">About this site and its sources</button>
@@ -128,6 +137,8 @@
       <li><a href="https://oceanservice.noaa.gov/facts/oceandepth.html" target="_blank" rel="noopener">NOAA: How deep is the ocean?</a></li>
       <li><a href="https://oceanexplorer.noaa.gov/ocean-fact/light-distributed/" target="_blank" rel="noopener">NOAA: Light in the ocean</a></li>
       <li><a href="https://oceanservice.noaa.gov/facts/marinesnow.html" target="_blank" rel="noopener">NOAA: What is marine snow?</a></li>
+      <li><a href="https://seabed2030.org/2026/04/20/global-seabed-mapping-reaches-new-milestone-as-five-million-square-kilometres-added-in-a-year/" target="_blank" rel="noopener">Seabed 2030: Global seabed mapping reaches 28.7%</a></li>
+      <li><a href="https://www.science.org/doi/10.1126/sciadv.adp8602" target="_blank" rel="noopener">Science Advances: How little we've seen of the deep seafloor</a></li>
       <li><a href="https://www.guinnessworldrecords.com/news/announcement/deepest-scuba-dive" target="_blank" rel="noopener">Guinness World Records: Deepest scuba dive review</a></li>
       <li><a href="https://www.guinnessworldrecords.com/world-records/deepest-shipwreck" target="_blank" rel="noopener">Guinness World Records: Deepest shipwreck</a></li>
       <li><a href="https://www.nhm.ac.uk/discover/secrets-of-deep-diving-whales.html" target="_blank" rel="noopener">Natural History Museum: Deep-diving whales</a></li>
@@ -137,6 +148,6 @@
     </ul>
     <p class="fine">Built with Three.js. All creatures are original procedural 3D illustrations. Type is Bricolage Grotesque. Inspired by Neal Agarwal's The Deep Sea.</p>
   </dialog>
-  <script type="module" src="app.js?v=8"></script>
+  <script type="module" src="app.js?v=9"></script>
 </body>
 </html>

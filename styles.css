@@ -101,8 +101,20 @@ main { position: relative; z-index: var(--layer-content); height: calc(10935 * v
 .note { max-width: 24ch; font-size: clamp(22px, 2.2vw, 30px); font-weight: 300; font-stretch: 88%; line-height: 1.25; letter-spacing: -.01em; color: #b9d0d2; transform: translateY(-.6em); }
 
 /* ---------- the floor ---------- */
-.ending { position: absolute; left: var(--gutter); width: var(--column); top: calc(10935 * var(--ppm) * 1px + clamp(96px, 13dvh, 140px)); pointer-events: auto; }
+/* Bottom padding lets short screens scroll the last lines clear of the instrument bar. */
+.ending { position: absolute; left: var(--gutter); width: var(--column); top: calc(10935 * var(--ppm) * 1px + clamp(96px, 13dvh, 140px)); padding-bottom: 170px; pointer-events: auto; }
 .ending-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 28px; }
+/* How much of the seafloor we know. app.js adds .shown when it comes into view, and the bars fill once. */
+.known { max-width: 480px; margin-top: 30px; padding-top: 14px; border-top: 1px solid #ffffff38; }
+.known h3 { margin: 0 0 12px; font-size: 18px; font-weight: 600; line-height: 1.3; }
+.known-row { display: flex; justify-content: space-between; gap: 16px; margin: 0 0 6px; font-size: 15px; line-height: 1.4; color: var(--soft); }
+.known-row strong { font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.known-bar { height: 6px; margin-bottom: 14px; border-radius: 3px; background: #ffffff1c; overflow: hidden; }
+.known-bar i { display: block; width: 0; min-width: 2px; height: 100%; border-radius: inherit; background: var(--accent); transition: width 1.8s cubic-bezier(.2, .7, .2, 1) .2s; }
+.known.shown .known-bar i { width: calc(var(--v) * 100%); }
+.known-scale { display: flex; justify-content: space-between; margin: -8px 0 0; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.known-source { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.known-source a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #92adb260; }
 
 /* ---------- header ---------- */
 .header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--layer-chrome); height: 80px; padding: 0 4.7%; display: flex; align-items: center; justify-content: flex-end; }

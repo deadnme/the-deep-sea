@@ -1,4 +1,4 @@
-import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=8';
+import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=9';
 
 const $ = selector => document.querySelector(selector);
 const root = document.documentElement;
@@ -183,6 +183,8 @@ document.addEventListener('click', event => {
   const go = t.closest('[data-go]'); if (go) { $('#guide').close(); glideTo(+go.dataset.go); }
 });
 $('#sources-open').onclick = () => $('#sources').showModal();
+// The seafloor bars at the floor fill once, when they come into view.
+new IntersectionObserver(([e], io) => { if (e.isIntersecting) { e.target.classList.add('shown'); io.disconnect(); } }, { threshold: .5 }).observe($('.known'));
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelector('.dialog-close').onclick = () => dialog.close();
   dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
@@ -222,7 +224,7 @@ showUnits();
 updateMotionButton();
 requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=8');
+  const { createOcean } = await import('./ocean.js?v=9');
   ocean = createOcean($('#ocean'));
   ocean.resize(view, viewH);
 } catch (error) {

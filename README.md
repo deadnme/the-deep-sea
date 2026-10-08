@@ -25,6 +25,8 @@ freedive and scuba dive, the Titanic and the Bismarck, Alvin's limit, the deepes
 - The depth gauge on the right is a slider: click, drag, or use the arrow and Page keys to jump.
 - Sound is opt-in, synthesized locally, and darkens with depth.
 - Pause motion stops all animation, and reduced-motion preferences are respected.
+- At the floor, two bars show how much of the seafloor has been mapped in detail (28.7%, Seabed 2030,
+  April 2026) and ever seen by people or cameras (less than 0.001%).
 
 Type is Bricolage Grotesque (SIL Open Font License), self-hosted in `fonts/`. Headlines grow narrower and
 heavier as the pressure rises. All creatures are procedural three.js illustrations and are not to scale.
