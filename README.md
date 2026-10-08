@@ -18,7 +18,7 @@ marine snow thickens, and the trench walls close in below 6,000 m.
 | Challenger Deep | ~10,935 m |
 
 About 35 animals sit at depths where they are found, from green sea turtles to hadal amphipods. Each has a
-label that follows it and opens the field guide. Between them are human landmarks and records: the deepest
+label that follows it and opens the field guide, which shows a real photo from Wikimedia Commons with its credit. Between them are human landmarks and records: the deepest
 freedive and scuba dive, the Titanic and the Bismarck, Alvin's limit, the deepest known wreck, and the fish limit.
 
 - The instrument bar shows depth (metres or feet), pressure and sunlight. Autopilot sinks at 32 m/s and fast-forwards through empty water.

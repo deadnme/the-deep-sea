@@ -1,4 +1,4 @@
-import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=9';
+import { FLOOR, zones, zoneAt, creatures, layout, photos } from './journey.js?v=10';
 
 const $ = selector => document.querySelector(selector);
 const root = document.documentElement;
@@ -164,11 +164,14 @@ $('.guide-index').innerHTML = zones.map(z => {
 let selected = known[0].id;
 function showCreature(id, open = true) {
   selected = id;
-  const c = byId[id], detail = $('#guide-detail');
-  detail.innerHTML = `<p class="guide-depth">Shown at <span data-m="${c.depth}"></span></p><h2>${c.name}</h2><p class="guide-latin">${c.latin}</p>`
+  const c = byId[id], detail = $('#guide-detail'), p = photos[id];
+  // Real photo (Wikimedia Commons). `pictured` names the animal when it is a stand-in for this exact one.
+  const photo = p ? `<figure class="guide-photo"><img src="photos/${p.file}" alt="${p.subject}" width="960" height="600" decoding="async">`
+    + `<figcaption>${p.pictured ? `${p.pictured} ` : ''}Photo: <a href="${p.source}" target="_blank" rel="noopener">${p.author}</a>, ${p.licenseUrl ? `<a href="${p.licenseUrl}" target="_blank" rel="noopener">${p.license}</a>` : p.license}</figcaption></figure>` : '';
+  detail.innerHTML = photo + `<p class="guide-depth">Shown at <span data-m="${c.depth}"></span></p><h2>${c.name}</h2><p class="guide-latin">${c.latin}</p>`
     + `<p class="guide-fact">${c.fact}</p><p class="guide-range">${c.range}</p>`
     + `<div class="guide-actions"><button class="primary" data-go="${c.depth}">Go to this depth</button>${c.source ? `<a href="${c.source}" target="_blank" rel="noopener">Read more about it</a>` : ''}</div>`;
-  applyUnits(detail);
+  applyUnits(detail); detail.scrollTop = 0;
   $('.guide-index').querySelectorAll('[data-select]').forEach(b => b.setAttribute('aria-current', String(b.dataset.select === id)));
   if (open && !$('#guide').open) {
     $('#guide').showModal();
@@ -224,7 +227,7 @@ showUnits();
 updateMotionButton();
 requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=9');
+  const { createOcean } = await import('./ocean.js?v=10');
   ocean = createOcean($('#ocean'));
   ocean.resize(view, viewH);
 } catch (error) {
