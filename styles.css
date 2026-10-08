@@ -112,6 +112,7 @@ main { position: relative; z-index: var(--layer-content); height: calc(10935 * v
 /* ---------- creature labels (positioned by ocean.js) ---------- */
 .specimen { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 14px; text-align: left; white-space: nowrap; visibility: hidden; text-shadow: 0 1px 8px #000a; will-change: transform, opacity; pointer-events: auto; }
 .specimen.flip { flex-direction: row-reverse; text-align: right; }
+.specimen.centred .specimen-line { display: none; }
 .specimen-line { width: 48px; height: 1px; background: #b3dddd70; }
 .specimen-name { font-size: 15px; font-weight: 500; line-height: 1.25; }
 .specimen-name small { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 400; color: var(--muted); }

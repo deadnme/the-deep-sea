@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=4';
+import { FLOOR, K, yAt, layout, creatures } from './journey.js?v=5';
 
 // ---------- detailed hero creatures (from the original Below the Surface build) ----------
 const sphere = new THREE.SphereGeometry(1, 36, 24);
@@ -620,7 +620,7 @@ export function createOcean(container) {
       el.setAttribute('aria-label', `About the ${c.name}`);
       labelsEl.append(el);
     }
-    life.push({ obj, update, home: obj.position.clone(), k: Math.random() * TAU, el, labelY: c.labelY ?? 1.6, w: 0, h: 0, shown: false });
+    life.push({ obj, update, home: obj.position.clone(), k: Math.random() * TAU, el, labelY: c.labelY ?? 1.6, w: 0, h: 0, shown: false, side: '' });
   }
 
   // ---------- marine snow ----------
@@ -698,22 +698,26 @@ export function createOcean(container) {
         c.obj.visible = near;
         if (near && c.update && !paused) c.update(time, c.obj, c.home, c.k);
         if (!c.el) continue;
-        let op = 0, px = 0, py = 0, flip = false;
+        let op = 0, py = 0, x0 = 0, side = '';
         if (near) {
           v.set(c.obj.position.x, c.obj.position.y + c.labelY, c.obj.position.z).project(camera);
-          px = (v.x + 1) / 2 * innerWidth; py = (1 - v.y) / 2 * innerHeight;
-          // Label sits right of the creature; flip it to the left when the depth gauge is in the way.
-          flip = px + c.w > labelRight;
-          const x0 = flip ? px - c.w : px;
-          const inside = v.z < 1 && x0 > 0 && x0 + c.w <= labelRight + 24 && !overText(x0, x0 + c.w, py - c.h / 2, py + c.h / 2);
+          const px = (v.x + 1) / 2 * innerWidth; py = (1 - v.y) / 2 * innerHeight;
+          // Label sits right of the creature, flips left when the depth gauge is in the way,
+          // and is centred over the creature when neither side fits (phones).
+          x0 = px;
+          if (px + c.w > labelRight) {
+            if (px - c.w >= 0) { x0 = px - c.w; side = 'flip'; }
+            else { x0 = clamp(px - c.w / 2, 8, labelRight - c.w); side = 'centred'; }
+          }
+          const inside = v.z < 1 && px > 0 && px < labelRight + 24 && !overText(x0, x0 + c.w, py - c.h / 2, py + c.h / 2);
           op = inside ? clamp(Math.min(py - top, bottom - py) / 60) : 0;
         }
         const show = op > .05;
         if (show !== c.shown) { c.el.style.visibility = show ? 'visible' : 'hidden'; c.shown = show; }
         if (!show) continue;
         c.el.style.opacity = op.toFixed(2);
-        c.el.classList.toggle('flip', flip);
-        c.el.style.transform = `translate(${flip ? px - c.w : px}px, ${py}px) translateY(-50%)`;
+        if (side !== c.side) { c.el.classList.toggle('flip', side === 'flip'); c.el.classList.toggle('centred', side === 'centred'); c.side = side; }
+        c.el.style.transform = `translate(${x0}px, ${py}px) translateY(-50%)`;
       }
       renderer.render(scene, camera);
     }

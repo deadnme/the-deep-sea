@@ -1,4 +1,4 @@
-import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=4';
+import { FLOOR, zones, zoneAt, creatures, layout } from './journey.js?v=5';
 
 const $ = selector => document.querySelector(selector);
 const root = document.documentElement;
@@ -9,6 +9,8 @@ let motionPaused = reduced.matches, ocean = null;
 // ponytail: the height is only re-read when the width changes, so a mobile URL bar showing or hiding
 // never re-scales an 80,000 px page under the reader. Rotating or resizing the width re-measures.
 let view, viewH = 0, lastW = 0;
+// Plain two-argument scrollTo: older Safari throws on behavior: 'instant', and the page never sets smooth scrolling.
+const jump = y => scrollTo(0, y);
 const depthToScroll = d => d * view.ppm + view.half - innerHeight / 2;
 const depthNow = () => Math.min(FLOOR, Math.max(0, (scrollY + innerHeight / 2 - view.half) / view.ppm));
 function measure() {
@@ -17,7 +19,7 @@ function measure() {
     lastW = innerWidth; viewH = innerHeight; view = layout(innerWidth, viewH);
     root.style.setProperty('--ppm', view.ppm);
     root.style.setProperty('--half', `${view.half}px`);
-    if (keep) scrollTo({ top: depthToScroll(keep), behavior: 'instant' });
+    if (keep) jump(depthToScroll(keep));
     renderGaugeZones();
   }
   ocean?.resize(view, viewH);
@@ -59,13 +61,13 @@ function renderGaugeZones() {
   }).join('');
   lastZone = null;
 }
-gauge.addEventListener('input', () => { stop(); scrollTo({ top: depthToScroll(+gauge.value), behavior: 'instant' }); });
+gauge.addEventListener('input', () => { stop(); jump(depthToScroll(+gauge.value)); });
 // Native steps are 1 m, far too fine for 10,935 m: arrows move 100 m, Page keys 1,000 m.
 const STEP = { ArrowDown: 100, ArrowRight: 100, ArrowUp: -100, ArrowLeft: -100, PageDown: 1000, PageUp: -1000 };
 gauge.addEventListener('keydown', e => {
   if (!(e.key in STEP)) return;
   e.preventDefault(); stop();
-  scrollTo({ top: depthToScroll(Math.min(FLOOR, Math.max(0, depthNow() + STEP[e.key]))), behavior: 'instant' });
+  jump(depthToScroll(Math.min(FLOOR, Math.max(0, depthNow() + STEP[e.key]))));
 });
 
 // ---------- glide (gauge, guide, ascend) and autopilot ----------
@@ -73,7 +75,7 @@ let glide = null, auto = false, autoY = 0;
 function glideTo(depth) {
   setAuto(false);
   const to = depthToScroll(Math.min(FLOOR, Math.max(0, depth)));
-  if (reduced.matches) { scrollTo({ top: to, behavior: 'instant' }); return; }
+  if (reduced.matches) { jump(to); return; }
   glide = { from: scrollY, to, start: performance.now(), dur: Math.min(6000, 700 + Math.abs(to - scrollY) / 15) };
 }
 function setAuto(on) {
@@ -98,12 +100,12 @@ function paint(now) {
   const dt = Math.min((now - lastFrame) / 1000, .1); lastFrame = now;
   if (glide) {
     const t = Math.min(1, (now - glide.start) / glide.dur), e = t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
-    scrollTo({ top: glide.from + (glide.to - glide.from) * e, behavior: 'instant' });
+    jump(glide.from + (glide.to - glide.from) * e);
     if (t === 1) glide = null;
   } else if (auto) {
     if (Math.abs(scrollY - autoY) > 4) autoY = scrollY;   // the reader dragged the scrollbar
     autoY += AUTO_SPEED * view.ppm * dt;
-    scrollTo({ top: autoY, behavior: 'instant' });
+    jump(autoY);
     if (depthNow() >= FLOOR - .5) setAuto(false);
   }
   const depth = depthNow(), shown = Math.round(depth), zone = zoneAt(depth);
@@ -198,7 +200,7 @@ showUnits();
 updateMotionButton();
 requestAnimationFrame(paint);
 try {
-  const { createOcean } = await import('./ocean.js?v=4');
+  const { createOcean } = await import('./ocean.js?v=5');
   ocean = createOcean($('#ocean'));
   ocean.resize(view, viewH);
 } catch (error) {
